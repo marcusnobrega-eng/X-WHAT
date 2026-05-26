@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X-WHAT | Results Viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --navy:#1a3a5c; --navy-dk:#0f2540; --navy-lt:#2d5a8e;
+            --teal:#0d9488; --teal-lt:#99f6e4; --teal-bg:#f0fdfa;
+            --bg:#f0f4f8; --surface:#ffffff; --ink:#1e293b;
+            --muted:#64748b; --border:#e2e8f0;
+            --ok:#22c55e; --warn:#f59e0b; --error:#ef4444;
+            --font-serif:'DM Serif Display',serif; --font-sans:'DM Sans',sans-serif; --font-mono:'JetBrains Mono',monospace;
+        }
+        *{box-sizing:border-box;}
+        body,html{margin:0;padding:0;font-family:var(--font-sans);background:var(--bg);color:var(--ink);line-height:1.6;}
+        #shared-nav{display:flex;justify-content:space-between;align-items:center;background:var(--navy);color:white;padding:1rem 2rem;position:sticky;top:0;z-index:1000;}
+        .nav-brand{font-family:var(--font-serif);font-size:1.8rem;text-decoration:none;color:white;}
+        .nav-brand .accent-dot{color:var(--teal);}
+        .nav-links{list-style:none;display:flex;gap:1.5rem;margin:0;padding:0;}
+        .nav-links a{color:white;text-decoration:none;transition:color .2s;font-weight:500;}
+        .nav-links a:hover,.nav-links a.active{color:var(--teal-lt);border-bottom:2px solid var(--teal);}
+
+        /* UPLOAD ZONE */
+        .upload-section{max-width:800px;margin:3rem auto;padding:0 2rem;}
+        .upload-zone{border:2px dashed var(--teal);border-radius:12px;padding:3rem;text-align:center;background:var(--teal-bg);cursor:pointer;transition:all .2s;}
+        .upload-zone:hover,.upload-zone.drag-over{background:#d0faf4;border-color:var(--navy);transform:scale(1.01);}
+        .upload-zone .upload-icon{font-size:3rem;margin-bottom:1rem;}
+        .upload-zone h2{font-family:var(--font-serif);color:var(--navy);margin:0 0 .5rem;}
+        .upload-zone p{color:var(--muted);margin:0;}
+        .upload-btn{display:inline-block;margin-top:1.5rem;padding:.75rem 2rem;background:var(--teal);color:white;border-radius:6px;font-weight:bold;cursor:pointer;border:none;font-size:1rem;}
+        .upload-btn:hover{background:#0b7a70;}
+
+        /* RESULTS DASHBOARD */
+        .results-container{max-width:1400px;margin:0 auto;padding:0 2rem 4rem;}
+        .results-header{display:flex;justify-content:space-between;align-items:center;margin:2rem 0 1.5rem;}
+        .results-header h1{font-family:var(--font-serif);color:var(--navy);margin:0;font-size:2rem;}
+        .results-meta{font-family:var(--font-mono);font-size:.85rem;color:var(--muted);}
+        .btn-reset{background:none;border:1px solid var(--border);border-radius:4px;padding:.5rem 1rem;cursor:pointer;color:var(--muted);font-family:var(--font-sans);}
+        .btn-reset:hover{background:var(--border);}
+
+        /* TAB BAR */
+        .tab-bar{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:1.5rem;background:var(--surface);border-radius:8px 8px 0 0;overflow:hidden;}
+        .tab{padding:.75rem 1.5rem;cursor:pointer;font-weight:500;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--font-sans);font-size:.95rem;}
+        .tab:hover{color:var(--ink);background:var(--bg);}
+        .tab.active{color:var(--teal);border-bottom-color:var(--teal);background:white;}
+
+        /* KPI CARDS */
+        .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;}
+        .kpi-card{background:var(--surface);border-radius:8px;padding:1.25rem;border:1px solid var(--border);border-top:4px solid var(--teal);}
+        .kpi-card .kpi-label{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem;}
+        .kpi-card .kpi-value{font-family:var(--font-mono);font-size:1.6rem;font-weight:700;color:var(--navy);}
+        .kpi-card .kpi-unit{font-size:.8rem;color:var(--muted);font-family:var(--font-mono);}
+        .kpi-card.ok{border-top-color:var(--ok);}
+        .kpi-card.warn{border-top-color:var(--warn);}
+
+        /* PANEL LAYOUT */
+        .panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
+        .panel-wide{grid-column:1/-1;}
+        .panel{background:var(--surface);border-radius:8px;border:1px solid var(--border);overflow:hidden;}
+        .panel-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+        .panel-header h3{margin:0;font-family:var(--font-serif);color:var(--navy);font-size:1.2rem;}
+        .panel-body{padding:1.25rem;overflow-x:auto;}
+
+        /* DATA TABLES */
+        .data-table{width:100%;border-collapse:collapse;font-size:.88rem;}
+        .data-table th{background:var(--navy);color:white;padding:.6rem .8rem;text-align:left;font-weight:500;font-family:var(--font-mono);font-size:.82rem;white-space:nowrap;}
+        .data-table td{padding:.5rem .8rem;border-bottom:1px solid var(--border);font-family:var(--font-mono);white-space:nowrap;}
+        .data-table tr:hover td{background:var(--teal-bg);}
+        .status-ok{color:var(--ok);font-weight:700;}
+        .status-warn{color:var(--warn);font-weight:700;}
+        .status-err{color:var(--error);font-weight:700;}
+        .badge{display:inline-block;padding:.15rem .5rem;border-radius:99px;font-size:.75rem;font-weight:700;}
+        .badge-ok{background:#dcfce7;color:#166534;}
+        .badge-warn{background:#fef3c7;color:#92400e;}
+        .badge-err{background:#fee2e2;color:#991b1b;}
+        .badge-blue{background:#dbeafe;color:#1e40af;}
+        .badge-gray{background:#f1f5f9;color:var(--muted);}
+
+        /* NETWORK SVG */
+        #network-svg-container{width:100%;overflow:hidden;background:#f8fafc;border-radius:4px;border:1px solid var(--border);}
+        #network-svg{width:100%;display:block;}
+        .svg-node-label{font-family:"DM Sans",sans-serif;font-size:11px;font-weight:bold;fill:white;text-anchor:middle;dominant-baseline:middle;pointer-events:none;}
+        .svg-pressure-label{font-family:"JetBrains Mono",monospace;font-size:10px;fill:var(--navy);text-anchor:middle;}
+        .svg-pipe-label{font-family:"JetBrains Mono",monospace;font-size:9px;fill:var(--muted);}
+
+        /* CHART */
+        #cost-chart-container{height:280px;position:relative;display:flex;align-items:flex-end;justify-content:center;gap:.75rem;padding:1rem;}
+        .bar-group{display:flex;flex-direction:column;align-items:center;gap:.35rem;flex:1;max-width:120px;}
+        .bar-stack{width:100%;display:flex;flex-direction:column-reverse;border-radius:6px 6px 0 0;overflow:hidden;min-height:4px;}
+        .bar-seg{width:100%;transition:height .5s ease;}
+        .bar-seg-pipeline{background:#1a3a5c;}
+        .bar-seg-energy{background:#0d9488;}
+        .bar-seg-material{background:#f59e0b;}
+        .bar-seg-foundation{background:#ef4444;}
+        .bar-label-val{font-family:var(--font-mono);font-size:.78rem;color:var(--navy);text-align:center;}
+        .bar-label-cat{font-size:.78rem;color:var(--muted);text-align:center;}
+        .chart-legend{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem;justify-content:center;}
+        .chart-legend-item{display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--ink);}
+        .legend-swatch{width:14px;height:14px;border-radius:2px;}
+
+        /* TAB PANELS */
+        .tab-panel{display:none;}
+        .tab-panel.active{display:block;}
+
+        /* LOADING STATE */
+        .loading-spinner{display:inline-block;width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;margin:2rem auto;display:block;}
+        @keyframes spin{to{transform:rotate(360deg);}}
+
+        .hidden{display:none!important;}
+        .shared-footer{background:var(--navy-dk);color:white;padding:2rem;border-top:4px solid var(--teal);text-align:center;font-family:var(--font-mono);font-size:.85rem;color:var(--muted);}
+    </style>
+</head>
+<body>
+
+<nav id="shared-nav">
+    <a href="index.html" class="nav-brand">X-WHAT<span class="accent-dot">.</span></a>
+    <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="#">Paper</a></li>
+        <li><a href="#">Manual</a></li>
+        <li><a href="canvas.html">Canvas</a></li>
+        <li><a href="results.html" class="active">Results</a></li>
+        <li><a href="#">Case Studies</a></li>
+    </ul>
+</nav>
+
+<!-- ===== UPLOAD SECTION ===== -->
+<div id="upload-section" class="upload-section">
+    <div class="upload-zone" id="drop-zone">
+        <div class="upload-icon">📊</div>
+        <h2>Upload Solved X-WHAT Model</h2>
+        <p>Drop your solved <code>.xlsm</code> or <code>.xlsx</code> file here, or click to browse.<br>Recommended flow: export a <code>.xwhat.xml</code> package from the <a href="canvas.html" style="color:var(--teal)">Canvas</a> → import it into <code>X-WHAT_Model_V1.xlsm</code> → run Solver → save → upload here.</p>
+        <button class="upload-btn" onclick="document.getElementById('file-input').click()">Choose Solved Workbook</button>
+        <input type="file" id="file-input" accept=".xlsx,.xlsm,.xls" style="display:none">
+    </div>
+    <p style="text-align:center;color:var(--muted);font-size:.9rem;margin-top:1.5rem;">
+        Or try a <button id="btn-load-demo" style="background:none;border:none;color:var(--teal);cursor:pointer;font-weight:bold;font-size:.9rem;">demo dataset</button> to see the dashboard
+    </p>
+</div>
+
+<!-- ===== RESULTS DASHBOARD ===== -->
+<div id="results-section" class="results-container hidden">
+
+    <div class="results-header">
+        <div>
+            <h1>Network Results</h1>
+            <div class="results-meta" id="results-meta-text"></div>
+        </div>
+        <button class="btn-reset" id="btn-reset-results">↩ Upload Different File</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row" id="kpi-row"></div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+        <button class="tab active" data-tab="network">🔵 Network Flow</button>
+        <button class="tab" data-tab="pressure">📊 Node Pressures</button>
+        <button class="tab" data-tab="pipes">🔗 Link Flows</button>
+        <button class="tab" data-tab="costs">💰 Cost Breakdown</button>
+    </div>
+
+    <!-- TAB: Network Flow -->
+    <div class="tab-panel active" id="tab-network">
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Network Flow Diagram</h3>
+                <span style="font-size:.85rem;color:var(--muted)">Pipe width ∝ |q| · Blue = positive flow · Red = reversed</span>
+            </div>
+            <div class="panel-body" style="padding:0;">
+                <div id="network-svg-container">
+                    <svg id="network-svg" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg"></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: Pressures -->
+    <div class="tab-panel" id="tab-pressure">
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Node Pressure Table</h3>
+                <span style="font-size:.85rem;color:var(--muted)">Design range: 10–30 mH₂O</span>
+            </div>
+            <div class="panel-body">
+                <table class="data-table">
+                    <thead><tr><th>Node</th><th>Type</th><th>Elevation (m)</th><th>Demand (L/s)</th><th>Dynamic P (mH₂O)</th><th>Status</th></tr></thead>
+                    <tbody id="pressure-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: Pipe Flows -->
+    <div class="tab-panel" id="tab-pipes">
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Link Flow Table</h3>
+            </div>
+            <div class="panel-body">
+                <table class="data-table">
+                    <thead><tr><th>Link</th><th>From</th><th>To</th><th>L (m)</th><th>D (mm)</th><th>q (L/s)</th><th>|q| Dir</th><th>Cost (USD)</th></tr></thead>
+                    <tbody id="pipes-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: Costs -->
+    <div class="tab-panel" id="tab-costs">
+        <div class="panel-grid">
+            <div class="panel">
+                <div class="panel-header"><h3>Cost Breakdown</h3></div>
+                <div class="panel-body">
+                    <div id="cost-chart-container"></div>
+                    <div class="chart-legend">
+                        <div class="chart-legend-item"><div class="legend-swatch bar-seg-pipeline"></div> Pipeline</div>
+                        <div class="chart-legend-item"><div class="legend-swatch bar-seg-energy"></div> Pumping Energy</div>
+                        <div class="chart-legend-item"><div class="legend-swatch bar-seg-material"></div> Tank Material</div>
+                        <div class="chart-legend-item"><div class="legend-swatch bar-seg-foundation"></div> Foundation</div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header"><h3>Cost Summary</h3></div>
+                <div class="panel-body">
+                    <table class="data-table">
+                        <thead><tr><th>Component</th><th>Cost (MUSD)</th><th>Share</th></tr></thead>
+                        <tbody id="cost-summary-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<footer class="shared-footer">
+    X-WHAT Results Viewer v0.0.1 - Release 1 · Open Source · MIT License
+</footer>
+
+<script>
+/* =========================================
+   TAB SWITCHING
+   ========================================= */
+document.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-'+tab.dataset.tab).classList.add('active');
+    });
+});
+
+/* =========================================
+   FILE DROP / SELECT
+   ========================================= */
+const dropZone=document.getElementById('drop-zone');
+const fileInput=document.getElementById('file-input');
+
+dropZone.addEventListener('dragover', e=>{e.preventDefault(); dropZone.classList.add('drag-over');});
+dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e=>{
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const file=e.dataTransfer.files[0];
+    if(file) processFile(file);
+});
+fileInput.addEventListener('change', e=>{if(e.target.files[0]) processFile(e.target.files[0]);});
+dropZone.addEventListener('click', e=>{if(e.target.tagName!=='BUTTON'&&e.target.tagName!=='A') fileInput.click();});
+
+/* =========================================
+   FILE PROCESSOR
+   ========================================= */
+function processFile(file) {
+    const reader=new FileReader();
+    reader.onload=e=>{
+        try {
+            const data=new Uint8Array(e.target.result);
+            const wb=XLSX.read(data,{type:'array'});
+            parseResults(wb, file.name);
+        } catch(err) {
+            alert('Error reading file: '+err.message+'\n\nMake sure this is a valid solved X-WHAT workbook (.xlsm or .xlsx).');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+/* =========================================
+   XLSX PARSER
+   ========================================= */
+function getCellVal(sheet, col, row) {
+    const key=XLSX.utils.encode_cell({r:row-1, c:colIdx(col)});
+    const cell=sheet[key];
+    if(!cell) return null;
+    return cell.v ?? cell.w ?? null;
+}
+
+function colIdx(col) {
+    let n=0; for(const c of col) n=n*26+(c.charCodeAt(0)-64); return n-1;
+}
+
+function parseResults(wb, filename) {
+    const memSheet=wb.Sheets['Memory'];
+    if(!memSheet){
+        alert('No "Memory" sheet found. Make sure this is a solved X-WHAT workbook (.xlsm or .xlsx).');
+        return;
+    }
+
+    // Read network dimensions
+    const N_raw=getCellVal(memSheet,'C',12);
+    const P_raw=getCellVal(memSheet,'C',10);
+    const N=parseInt(N_raw)||0;
+    const P=parseInt(P_raw)||0;
+
+    if(N===0){alert('No node data found (Memory!C12 is empty). Export a network from the Canvas first.');return;}
+
+    // ---- Parse Nodes ----
+    const nodes=[];
+    for(let i=0;i<N;i++){
+        const row=50+i;
+        nodes.push({
+            idx: i+1,
+            id: getCellVal(memSheet,'B',row) ?? String(i+1),
+            elevation: getCellVal(memSheet,'C',row) ?? 0,
+            type: getCellVal(memSheet,'D',row) ?? 'Manhole',
+            demand: getCellVal(memSheet,'Y',row) ?? 0,
+            fixedHead: getCellVal(memSheet,'Z',row) ?? 0,
+            pressure: getCellVal(memSheet,'AA',row),      // AA = solver variable (pressure head)
+            // Try BK (dynamic pressure result) first, fall back to AA
+            dynPressure: getCellVal(memSheet,'BK',row+1) ?? getCellVal(memSheet,'AA',row) ?? null,
+        });
+    }
+
+    // ---- Parse Pipes ----
+    const pipes=[];
+    for(let i=0;i<P;i++){
+        const row=50+i;
+        pipes.push({
+            idx: i+1,
+            from: getCellVal(memSheet,'AF',row) ?? '?',
+            to: getCellVal(memSheet,'AG',row) ?? '?',
+            length: getCellVal(memSheet,'AJ',row) ?? 0,
+            diameter: getCellVal(memSheet,'AK',row) ?? 0,
+            q: getCellVal(memSheet,'AI',row) ?? null,   // flow (solver result)
+            cost: getCellVal(memSheet,'AL',row) ?? null, // pipe cost
+        });
+    }
+
+    // ---- Parse Costs ----
+    const costPipeline = getCellVal(memSheet,'BN',51) ?? 0;
+    const costEnergyNPV = getCellVal(memSheet,'BQ',51) ?? 0;
+    const costMaterial  = getCellVal(memSheet,'BR',51) ?? 0;
+    const costFoundation= getCellVal(memSheet,'BS',51) ?? 0;
+    const costTotal     = getCellVal(memSheet,'BT',51) ?? (costPipeline+costEnergyNPV+costMaterial+costFoundation);
+
+    const results={nodes, pipes, N, P, filename, costPipeline, costEnergyNPV, costMaterial, costFoundation, costTotal};
+    renderDashboard(results);
+}
+
+/* =========================================
+   RENDER DASHBOARD
+   ========================================= */
+function renderDashboard(r) {
+    document.getElementById('upload-section').classList.add('hidden');
+    document.getElementById('results-section').classList.remove('hidden');
+
+    // Meta
+    document.getElementById('results-meta-text').textContent=
+        `File: ${r.filename} · N=${r.N} nodes · P=${r.P} pipes · Parsed ${new Date().toLocaleTimeString()}`;
+
+    // Detect if solver has run (are there non-null q values?)
+    const solved=r.pipes.some(p=>p.q!==null&&p.q!==0);
+
+    // KPIs
+    const nodesPressOk = r.nodes.filter(n=>n.dynPressure!=null&&n.dynPressure>=10&&n.dynPressure<=30).length;
+    const nodesTotal = r.nodes.filter(n=>n.type==='Manhole').length;
+    const maxP = Math.max(...r.nodes.filter(n=>n.dynPressure!=null).map(n=>n.dynPressure));
+    const minP = Math.min(...r.nodes.filter(n=>n.dynPressure!=null&&n.dynPressure>0).map(n=>n.dynPressure));
+    const totalFlow = r.pipes.reduce((s,p)=>s+Math.abs(p.q||0),0);
+
+    document.getElementById('kpi-row').innerHTML=`
+        <div class="kpi-card"><div class="kpi-label">Total Nodes</div><div class="kpi-value">${r.N}</div><div class="kpi-unit">network nodes</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total Pipes</div><div class="kpi-value">${r.P}</div><div class="kpi-unit">links</div></div>
+        <div class="kpi-card ${solved?'ok':'warn'}"><div class="kpi-label">Solver Status</div><div class="kpi-value" style="font-size:1.1rem">${solved?'✅ Solved':'⏳ Unsolved'}</div><div class="kpi-unit">${solved?'flows available':'run Solver first'}</div></div>
+        ${solved?`
+        <div class="kpi-card"><div class="kpi-label">Min Pressure</div><div class="kpi-value">${isFinite(minP)?minP.toFixed(1):'—'}</div><div class="kpi-unit">mH₂O</div></div>
+        <div class="kpi-card"><div class="kpi-label">Max Pressure</div><div class="kpi-value">${isFinite(maxP)?maxP.toFixed(1):'—'}</div><div class="kpi-unit">mH₂O</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total Cost</div><div class="kpi-value" style="font-size:1.1rem">${r.costTotal>0?(r.costTotal).toFixed(3):'—'}</div><div class="kpi-unit">MUSD (NPV)</div></div>`:''}
+    `;
+
+    renderNetworkSVG(r, solved);
+    renderPressureTable(r, solved);
+    renderPipesTable(r, solved);
+    renderCostChart(r);
+}
+
+/* =========================================
+   NETWORK SVG — TOPOLOGY-AWARE LAYOUT
+   ========================================= */
+function renderNetworkSVG(r, solved) {
+    const svg = document.getElementById('network-svg');
+    const W = 820, H = 520, PAD = 55;
+
+    const nodeMap = {};
+    r.nodes.forEach(n => { nodeMap[String(n.id)] = { ...n, x: 0, y: 0, vx: 0, vy: 0, degree: 0 }; });
+
+    r.pipes.forEach(p => {
+        if (nodeMap[String(p.from)]) nodeMap[String(p.from)].degree++;
+        if (nodeMap[String(p.to)])   nodeMap[String(p.to)].degree++;
+    });
+
+    const nodeList = Object.values(nodeMap);
+    const nodeIds  = nodeList.map(n => String(n.id));
+    const adjList  = {};
+    nodeIds.forEach(id => adjList[id] = []);
+    r.pipes.forEach(p => {
+        const a = String(p.from), b = String(p.to);
+        if (adjList[a]) adjList[a].push(b);
+        if (adjList[b]) adjList[b].push(a);
+    });
+
+    const tanks = nodeList.filter(n => n.type !== 'Manhole');
+    const root  = tanks.length
+        ? tanks.reduce((best, n) => n.degree > best.degree ? n : best, tanks[0])
+        : nodeList.reduce((best, n) => n.degree > best.degree ? n : best, nodeList[0]);
+
+    const level  = {};
+    const queue  = [String(root.id)];
+    level[String(root.id)] = 0;
+    while (queue.length) {
+        const cur = queue.shift();
+        (adjList[cur] || []).forEach(nb => {
+            if (level[nb] === undefined) { level[nb] = level[cur] + 1; queue.push(nb); }
+        });
+    }
+    nodeIds.forEach(id => { if (level[id] === undefined) level[id] = 0; });
+
+    const maxLevel = Math.max(...Object.values(level));
+    const levelGroups = {};
+    nodeIds.forEach(id => {
+        const lv = level[id];
+        if (!levelGroups[lv]) levelGroups[lv] = [];
+        levelGroups[lv].push(id);
+    });
+
+    const usableW = W - PAD * 2;
+    const usableH = H - PAD * 2;
+    Object.entries(levelGroups).forEach(([lv, ids]) => {
+        const lvNum = Number(lv);
+        const x = PAD + (usableW * lvNum / Math.max(maxLevel, 1));
+        ids.forEach((id, i) => {
+            nodeMap[id].x = x;
+            nodeMap[id].y = PAD + (usableH * (i + 1) / (ids.length + 1));
+        });
+    });
+
+    const IDEAL    = Math.min(usableW, usableH) / Math.max(Math.sqrt(nodeList.length), 2.5);
+    const REPEL    = IDEAL * IDEAL * 1.8;
+    const K_SPRING = 0.06;
+    const DAMP     = 0.82;
+
+    for (let iter = 0; iter < 180; iter++) {
+        const cool = 1 - iter / 200;
+        for (let a = 0; a < nodeList.length; a++) {
+            for (let b = a + 1; b < nodeList.length; b++) {
+                const na = nodeList[a], nb = nodeList[b];
+                const dx = nb.x - na.x, dy = nb.y - na.y;
+                const dist = Math.max(Math.hypot(dx, dy), 0.5);
+                const f = REPEL / (dist * dist);
+                na.vx -= f*dx/dist; na.vy -= f*dy/dist;
+                nb.vx += f*dx/dist; nb.vy += f*dy/dist;
+            }
+        }
+        r.pipes.forEach(p => {
+            const na = nodeMap[String(p.from)], nb = nodeMap[String(p.to)];
+            if (!na || !nb) return;
+            const dx = nb.x - na.x, dy = nb.y - na.y;
+            const dist = Math.max(Math.hypot(dx, dy), 0.5);
+            const f = (dist - IDEAL) * K_SPRING;
+            na.vx += f*dx/dist*cool; na.vy += f*dy/dist*cool;
+            nb.vx -= f*dx/dist*cool; nb.vy -= f*dy/dist*cool;
+        });
+        nodeList.forEach(n => {
+            n.vx += (W/2 - n.x) * 0.003 * cool;
+            n.vy += (H/2 - n.y) * 0.003 * cool;
+            n.x = Math.max(PAD, Math.min(W-PAD, n.x + n.vx));
+            n.y = Math.max(PAD, Math.min(H-PAD, n.y + n.vy));
+            n.vx *= DAMP; n.vy *= DAMP;
+        });
+    }
+
+    tanks.forEach(tn => {
+        const n = nodeMap[String(tn.id)];
+        const lv = level[String(tn.id)];
+        if (lv === 0) n.x = Math.max(PAD, Math.min(PAD + 40, n.x));
+        if (lv === maxLevel) n.x = Math.min(W-PAD, Math.max(W-PAD-40, n.x));
+    });
+
+    const maxQ = Math.max(1, ...r.pipes.map(p => Math.abs(p.q || 0)));
+    let svgContent = `<defs>
+        <marker id="arr-fwd" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#0d9488"/></marker>
+        <marker id="arr-rev" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ef4444"/></marker>
+        <marker id="arr-none" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/></marker>
+    </defs>`;
+
+    r.pipes.forEach(pipe => {
+        const na = nodeMap[String(pipe.from)], nb = nodeMap[String(pipe.to)];
+        if (!na || !nb) return;
+        const q = pipe.q ?? 0;
+        const absQ = Math.abs(q);
+        const w = Math.max(1.5, Math.min(7, 1.5 + 5.5*(absQ/maxQ)));
+        const color = !solved ? '#94a3b8' : q >= 0 ? '#0d9488' : '#ef4444';
+        const markerId = !solved ? 'arr-none' : q >= 0 ? 'arr-fwd' : 'arr-rev';
+
+        const dx = nb.x - na.x, dy = nb.y - na.y, len = Math.hypot(dx, dy) || 1;
+        const NR = 18;
+        const x1 = na.x+dx/len*NR, y1 = na.y+dy/len*NR;
+        const x2 = nb.x-dx/len*NR, y2 = nb.y-dy/len*NR;
+        const mx = (x1+x2)/2, my = (y1+y2)/2;
+        const perp = { x: -dy/len, y: dx/len };
+
+        svgContent += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${color}" stroke-width="${w}" stroke-opacity="0.85" marker-end="url(#${markerId})"/>`;
+        const lx = mx+perp.x*12, ly = my+perp.y*12;
+        const qStr = solved && q !== null ? ` (${q>=0?'+':''}${q.toFixed(1)})` : '';
+        svgContent += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" class="svg-pipe-label" text-anchor="middle">${pipe.idx}${qStr}</text>`;
+    });
+
+    r.nodes.forEach(n => {
+        const pos = nodeMap[String(n.id)];
+        if (!pos) return;
+        const isTank = n.type !== 'Manhole';
+        const NR = isTank ? 20 : 17;
+        const stroke = isTank ? '#f59e0b' : '#0d9488';
+        if (isTank) {
+            svgContent += `<rect x="${(pos.x-NR).toFixed(1)}" y="${(pos.y-NR).toFixed(1)}" width="${NR*2}" height="${NR*2}" rx="5" fill="#1a3a5c" stroke="${stroke}" stroke-width="3"/>`;
+        } else {
+            svgContent += `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="${NR}" fill="#1a3a5c" stroke="${stroke}" stroke-width="2"/>`;
+        }
+        svgContent += `<text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" class="svg-node-label">${n.id}</text>`;
+        if (solved && n.dynPressure != null) {
+            const pColor = n.dynPressure < 10 ? '#ef4444' : n.dynPressure > 30 ? '#f59e0b' : '#22c55e';
+            svgContent += `<text x="${pos.x.toFixed(1)}" y="${(pos.y+NR+13).toFixed(1)}" class="svg-pressure-label" fill="${pColor}">${n.dynPressure.toFixed(1)} m</text>`;
+        }
+    });
+
+    svg.innerHTML = svgContent;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+}
+/* =========================================
+   PRESSURE TABLE
+   ========================================= */
+function renderPressureTable(r, solved) {
+    const tbody=document.getElementById('pressure-tbody');
+    tbody.innerHTML=r.nodes.map(n=>{
+        const isTank=(n.type!=='Manhole');
+        const typeLabel=isTank?'<span class="badge badge-blue">Tank</span>':'<span class="badge badge-gray">Junction</span>';
+        const p=n.dynPressure;
+        let statusHtml='<span class="badge badge-gray">N/A</span>';
+        if(solved&&p!=null&&!isTank) {
+            if(p>=10&&p<=30) statusHtml=`<span class="badge badge-ok">✅ OK (${p.toFixed(1)} m)</span>`;
+            else if(p<10)    statusHtml=`<span class="badge badge-err">❌ Low (${p.toFixed(1)} m)</span>`;
+            else             statusHtml=`<span class="badge badge-warn">⚠ High (${p.toFixed(1)} m)</span>`;
+        } else if(isTank&&p!=null) {
+            statusHtml=`<span class="badge badge-blue">Fixed: ${p.toFixed(1)} m</span>`;
+        }
+        return `<tr>
+            <td>${n.id}</td>
+            <td>${typeLabel}</td>
+            <td>${(n.elevation||0).toFixed(2)}</td>
+            <td>${(n.demand||0) > 0 ? '+':''  }${(n.demand||0).toFixed(2)}</td>
+            <td>${solved&&p!=null?p.toFixed(2):'—'}</td>
+            <td>${statusHtml}</td>
+        </tr>`;
+    }).join('');
+}
+
+/* =========================================
+   PIPES TABLE
+   ========================================= */
+function renderPipesTable(r, solved) {
+    const tbody=document.getElementById('pipes-tbody');
+    tbody.innerHTML=r.pipes.map(p=>{
+        const q=p.q;
+        const qDisplay=q!=null?q.toFixed(3):'—';
+        const dirBadge=q!=null?(q>0.001?'<span class="badge badge-ok">→ Fwd</span>':q<-0.001?'<span class="badge badge-err">← Rev</span>':'<span class="badge badge-gray">≈ 0</span>'):'<span class="badge badge-gray">—</span>';
+        return `<tr>
+            <td>${p.idx}</td>
+            <td>${p.from}</td>
+            <td>${p.to}</td>
+            <td>${(p.length||0).toFixed(1)}</td>
+            <td>${(p.diameter||0).toFixed(1)}</td>
+            <td style="font-family:var(--font-mono)">${qDisplay}</td>
+            <td>${dirBadge}</td>
+            <td>${p.cost!=null?('$'+p.cost.toFixed(0)):'—'}</td>
+        </tr>`;
+    }).join('');
+}
+
+/* =========================================
+   COST CHART
+   ========================================= */
+function renderCostChart(r) {
+    const total=r.costTotal||0;
+    const components=[
+        {label:'Pipeline',    value:r.costPipeline||0,  cls:'bar-seg-pipeline'},
+        {label:'Pumping',     value:r.costEnergyNPV||0, cls:'bar-seg-energy'},
+        {label:'Tank Mat.',   value:r.costMaterial||0,  cls:'bar-seg-material'},
+        {label:'Foundation',  value:r.costFoundation||0,cls:'bar-seg-foundation'},
+    ];
+    const maxVal=Math.max(total, ...components.map(c=>c.value), 0.001);
+    const chartH=220;
+
+    const chartHtml=components.map(comp=>{
+        const h=Math.max(4, (comp.value/maxVal)*chartH);
+        return `<div class="bar-group">
+            <div class="bar-label-val">${comp.value.toFixed(3)}</div>
+            <div class="bar-stack" style="height:${h.toFixed(0)}px;">
+                <div class="bar-seg ${comp.cls}" style="height:100%;"></div>
+            </div>
+            <div class="bar-label-cat">${comp.label}</div>
+        </div>`;
+    }).join('');
+
+    const totalBarH=Math.max(4, Math.min(chartH, total/maxVal*chartH));
+    const totalBar=`<div class="bar-group">
+        <div class="bar-label-val"><strong>${total.toFixed(3)}</strong></div>
+        <div class="bar-stack" style="height:${totalBarH.toFixed(0)}px;border-radius:6px 6px 0 0;overflow:hidden;">
+            <div class="bar-seg" style="height:${(r.costFoundation||0)/Math.max(total,0.001)*100}%;background:#ef4444;"></div>
+            <div class="bar-seg" style="height:${(r.costMaterial||0)/Math.max(total,0.001)*100}%;background:#f59e0b;"></div>
+            <div class="bar-seg" style="height:${(r.costEnergyNPV||0)/Math.max(total,0.001)*100}%;background:#0d9488;"></div>
+            <div class="bar-seg" style="height:${(r.costPipeline||0)/Math.max(total,0.001)*100}%;background:#1a3a5c;"></div>
+        </div>
+        <div class="bar-label-cat"><strong>Total</strong></div>
+    </div>`;
+
+    document.getElementById('cost-chart-container').innerHTML=chartHtml+totalBar;
+
+    // Cost summary table
+    const tbody=document.getElementById('cost-summary-tbody');
+    const rows=[...components, {label:'<strong>Total</strong>', value:total, cls:''}];
+    tbody.innerHTML=rows.map((c,i)=>{
+        const share=total>0?(c.value/total*100).toFixed(1):'—';
+        return `<tr style="${i===rows.length-1?'border-top:2px solid var(--border);font-weight:bold;':''}">
+            <td>${c.label}</td>
+            <td>${c.value.toFixed(4)}</td>
+            <td>${i<rows.length-1?share+'%':''}</td>
+        </tr>`;
+    }).join('');
+}
+
+/* =========================================
+   RESET
+   ========================================= */
+document.getElementById('btn-reset-results').addEventListener('click',()=>{
+    document.getElementById('results-section').classList.add('hidden');
+    document.getElementById('upload-section').classList.remove('hidden');
+    fileInput.value='';
+});
+
+/* =========================================
+   DEMO DATA
+   ========================================= */
+document.getElementById('btn-load-demo').addEventListener('click',()=>{
+    // Generate a plausible Case B dataset (Porto 2004, 7 junctions + 1 tank)
+    const demoNodes=[
+        {idx:1,id:'1',elevation:463.20,type:'Manhole',demand:0,    fixedHead:0, dynPressure:22.1},
+        {idx:2,id:'2',elevation:460.20,type:'Manhole',demand:10,   fixedHead:0, dynPressure:18.4},
+        {idx:3,id:'3',elevation:468.90,type:'Manhole',demand:8,    fixedHead:0, dynPressure:15.2},
+        {idx:4,id:'4',elevation:471.20,type:'Manhole',demand:5,    fixedHead:0, dynPressure:16.8},
+        {idx:5,id:'5',elevation:467.70,type:'Manhole',demand:10,   fixedHead:0, dynPressure:19.3},
+        {idx:6,id:'6',elevation:463.20,type:'Manhole',demand:5,    fixedHead:0, dynPressure:21.0},
+        {idx:7,id:'7',elevation:459.20,type:'Manhole',demand:2,    fixedHead:0, dynPressure:20.5},
+        {idx:8,id:'8',elevation:463.20,type:'Reservoir or Tank',demand:-40,fixedHead:1,dynPressure:28.7},
+    ];
+    const demoPipes=[
+        {idx:1,from:'1',to:'2',length:1850,diameter:150,q:18.2,  cost:42550},
+        {idx:2,from:'2',to:'3',length:790, diameter:125,q:5.1,   cost:12640},
+        {idx:3,from:'7',to:'3',length:700, diameter:100,q:3.4,   cost:7700},
+        {idx:4,from:'4',to:'7',length:600, diameter:100,q:-4.6,  cost:6600},
+        {idx:5,from:'5',to:'4',length:980, diameter:100,q:-1.5,  cost:10780},
+        {idx:6,from:'2',to:'5',length:850, diameter:100,q:8.9,   cost:9350},
+        {idx:7,from:'6',to:'5',length:650, diameter:200,q:-10.3, cost:14950},
+        {idx:8,from:'1',to:'6',length:850, diameter:200,q:-15.1, cost:19550},
+        {idx:9,from:'8',to:'1',length:520, diameter:250,q:40.0,  cost:20800},
+    ];
+    renderDashboard({
+        nodes:demoNodes, pipes:demoPipes, N:8, P:9, filename:'Demo — Case (b) Porto 2004',
+        costPipeline:0.1447, costEnergyNPV:0.0812, costMaterial:0.0340, costFoundation:0.0218, costTotal:0.2817
+    });
+});
+</script>
+</body>
+</html>

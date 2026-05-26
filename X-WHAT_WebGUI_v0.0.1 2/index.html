@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>X-WHAT Model | Excel for Water system Hydraulic Analysis Tool</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* SHARED DESIGN SYSTEM (Expanded for Phase 2) */
+      :root {
+        --navy: #1a3a5c;
+        --navy-dk: #0f2540;
+        --navy-lt: #2d5a8e;
+        --teal: #0d9488;
+        --teal-lt: #99f6e4;
+        --teal-bg: #f0fdfa;
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --ink: #1e293b;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --font-serif: "DM Serif Display", serif;
+        --font-sans: "DM Sans", sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        font-family: var(--font-sans);
+        background-color: var(--bg);
+        color: var(--ink);
+        line-height: 1.6;
+      }
+
+      /* Navigation */
+      #shared-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: var(--navy);
+        color: white;
+        padding: 1rem 2rem;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+      }
+      .nav-brand {
+        font-family: var(--font-serif);
+        font-size: 1.8rem;
+        text-decoration: none;
+        color: white;
+      }
+      .accent-dot {
+      color: var(--teal);
+      }
+      .nav-links {
+        list-style: none;
+        display: flex;
+        gap: 1.5rem;
+        margin: 0;
+        padding: 0;
+      }
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        transition: color 0.2s;
+        font-weight: 500;
+      }
+      .nav-links a:hover,
+      .nav-links a.active {
+        color: var(--teal-lt);
+        border-bottom: 2px solid var(--teal);
+      }
+
+      /* Buttons */
+      .btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: all 0.2s;
+        cursor: pointer;
+      }
+      .btn-primary {
+        background-color: var(--surface);
+        color: var(--teal);
+        border: 2px solid var(--surface);
+      }
+      .btn-primary:hover {
+        background-color: transparent;
+        color: var(--surface);
+      }
+      .btn-secondary {
+        background-color: transparent;
+        color: var(--surface);
+        border: 2px solid var(--surface);
+      }
+      .btn-secondary:hover {
+        background-color: var(--surface);
+        color: var(--navy);
+      }
+      .btn-ghost {
+        color: var(--teal-lt);
+        text-decoration: underline;
+        background: none;
+        border: none;
+        padding: 0.75rem;
+      }
+
+      /* Hero Section */
+      .hero {
+        background: linear-gradient(
+          135deg,
+          var(--navy-dk) 0%,
+          var(--navy) 100%
+        );
+        color: white;
+        padding: 3rem 2rem 3rem 2rem;
+        text-align: center;
+      }
+      .hero-badge {
+        display: inline-block;
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 0.25rem 1rem;
+        border-radius: 99px;
+        font-size: 0.85rem;
+        margin-bottom: 1.5rem;
+        color: var(--teal-lt);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .hero h1 {
+        font-family: var(--font-serif);
+        font-weight: normal;
+        font-size: clamp(2.2rem, 5vw, 3.8rem);
+        margin: 0 0 0.5rem 0;
+      }
+      .hero h2 {
+        font-family: var(--font-serif);
+        font-style: italic;
+        font-weight: normal;
+        font-size: 1.5rem;
+        color: var(--border);
+        margin: 0 0 2rem 0;
+      }
+      .hero p {
+        max-width: 800px;
+        margin: 0 auto 2rem auto;
+        font-size: 1.1rem;
+        color: var(--border);
+      }
+      .hero-stats {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1rem;
+        border-radius: 8px;
+        display: inline-flex;
+        gap: 2rem;
+        margin-bottom: 2.5rem;
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .hero-actions {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      /* Sections & Layout */
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 4rem 2rem;
+      }
+      .bg-teal {
+        background-color: var(--teal-bg);
+      }
+
+      /* Grid & Cards */
+      .grid-2x3 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+      }
+      .info-card {
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-top: 4px solid var(--teal);
+        display: flex;
+        flex-direction: column;
+        text-decoration: none;
+        color: var(--ink);
+      }
+      .info-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      }
+      .info-card h3 {
+        color: var(--navy);
+        margin: 0 0 0.5rem 0;
+        font-family: var(--font-serif);
+        font-size: 1.4rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .info-card p {
+        margin: 0 0 1rem 0;
+        color: var(--muted);
+        flex-grow: 1;
+      }
+      .info-card .arrow-link {
+        color: var(--teal);
+        font-weight: bold;
+        margin-top: auto;
+      }
+
+      /* Institution Row */
+      .institution-row {
+        background-color: var(--navy);
+        padding: 2rem;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 2rem;
+        border-top: 1px solid var(--teal);
+        border-bottom: 1px solid var(--teal);
+      }
+      .institution-row div {
+        color: white;
+        font-family: var(--font-serif);
+        font-size: 1.2rem;
+        opacity: 0.8;
+      }
+
+      /* Paper Highlight */
+      .highlight-card {
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 2.5rem;
+        text-align: center;
+        max-width: 800px;
+        margin: 0 auto;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      }
+      .highlight-card .journal {
+        color: var(--muted);
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+        font-weight: bold;
+        margin-bottom: 1rem;
+      }
+      .highlight-card h3 {
+        font-family: var(--font-serif);
+        font-size: 1.8rem;
+        color: var(--navy);
+        margin: 0 0 1.5rem 0;
+      }
+      .highlight-card p {
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+      }
+
+/* Footer */
+.shared-footer {
+        background-color: var(--navy-dk);
+        padding: 2rem 2rem;
+        border-top: 4px solid var(--teal);
+      }
+      
+      .footer-content {
+        max-width: 1200px; /* Matches your main container width */
+        margin: 0 auto;
+        text-align: left; /* Forces left alignment */
+      }
+
+      .footer-title {
+        font-family: var(--font-sans); /* Smoother, more modern font */
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: var(--border); /* Less shiny than pure white */
+        margin-bottom: 0.5rem;
+        line-height: 1.5;
+      }
+
+      .footer-authors {
+        color: var(--muted);
+        font-size: 0.95rem;
+        font-family: var(--font-sans);
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="shared-nav">
+      <a href="index.html" class="nav-brand"
+        >X-WHAT<span class="accent-dot">.</span></a
+      >
+      <ul class="nav-links">
+        <li><a href="index.html" class="active">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="#">Theoretical Framework</a></li>
+        <li><a href="#">Manual</a></li>
+        <li><a href="canvas.html">Network Builder</a></li>
+        <li><a href="results.html">Results</a></li>
+      </ul>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-badge">WebGUI v0.0.1 - Release 1 &nbsp;|&nbsp; Excel engine v1.5</div>
+      
+      <h1>X-WHAT<span class="accent-dot">.</span> Model</h1>
+      <h2>Modeling and Design Optimization of Looped Water Distribution Networks using MS
+        Excel</h2>
+      <p>
+        Design and optimize water distribution networks using only Microsoft
+        Excel — no external software or coding needed. X-WHAT solves pipe flows
+        and minimizes system costs through an interactive web interface and a
+        transparent Excel engine.
+      </p>
+
+      <div class="hero-stats">
+        <span>Up to 200 Links</span> |
+        <span>No Coding Required</span> | <span>Open Source</span>
+      </div>
+
+      <div class="hero-actions">
+        <a href="canvas.html" class="btn btn-primary"
+          >Launch Network Builder &rarr;</a
+        >
+        <a href="about.html" class="btn btn-secondary">About the model &rarr;</a>
+        <a
+          href="https://github.com/marcusnobrega-eng/X-WHAT"
+          target="_blank"
+          class="btn-ghost"
+          >GitHub Repository &nearr;</a
+        >
+      </div>
+    </header>
+
+    <section class="bg-teal">
+      <div class="container">
+        <div class="grid-2x3">
+          <a href="canvas.html" class="info-card">
+            <h3>🔵 Network Builder</h3>
+            <p>
+              Draw your water distribution network interactively. Place nodes,
+              pipes, and loops, configure demands and boundary conditions, then
+              export the input package for Excel.
+            </p>
+            <span class="arrow-link">Open Builder &rarr;</span>
+          </a>
+          <a href="results.html" class="info-card">
+            <h3>📊 Results Viewer</h3>
+            <p>
+              Upload your solved Excel workbook to visualize pipe flows, node
+              pressures, and cost breakdowns in an interactive dashboard.
+            </p>
+            <span class="arrow-link">View Results &rarr;</span>
+          </a>
+          <a href="#" class="info-card">
+            <h3>📄 Theoretical Framework</h3>
+            <p>
+              Explore the governing equations, mass and energy balance
+              formulations.
+            </p>
+            <span class="arrow-link">Coming Soon &rarr;</span>
+          </a>
+          <a href="#" class="info-card">
+            <h3>📖 User Manual</h3>
+            <p>
+              Step-by-step guides for building networks, configuring the Solver,
+              and interpreting results; including the UbD class framework for
+              educators.
+            </p>
+            <span class="arrow-link">Coming Soon &rarr;</span>
+          </a>
+          <a href="about.html" class="info-card">
+            <h3>ℹ️ About the Model</h3>
+            <p>
+              Authors, contributions, and citation information.
+            </p>
+            <span class="arrow-link">Read More &rarr;</span>
+          </a>
+          <a
+            href="https://github.com/marcusnobrega-eng/X-WHAT"
+            class="info-card"
+            target="_blank"
+          >
+            <h3>⬇️ Download Excel Tool</h3>
+            <p>
+              Get the <code>X-WHAT_Model_V1.5.xlsm</code> workbook directly from
+              GitHub. This is the core engine, use it together with the Network
+              Builder.
+            </p>
+            <span class="arrow-link">Download via GitHub &nearr;</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <div class="institution-row">
+      <img src="Images/uarizona-logo.png" alt="University of Arizona" height="40">
+      <img src="Images/usp-logo.png"      alt="University of São Paulo" height="60">
+      <img src="Images/utsa-logo.svg"     alt="UT San Antonio" height="40">
+    </div>
+
+    <section class="container">
+      <div style="text-align: center; margin-bottom: 2.5rem">
+        <h2
+          style="
+            font-family: var(--font-serif);
+            color: var(--navy);
+            font-size: 2rem;
+            margin: 0 0 0.5rem 0;
+          "
+        >
+          How X-WHAT Works
+        
+      </div>
+      <div
+        style="
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 1.5rem;
+          margin-bottom: 3rem;
+        "
+      >
+        <div
+          style="
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            border-top: 4px solid var(--teal);
+          "
+        >
+          <div style="font-size: 2.5rem; margin-bottom: 1rem">🔵</div>
+          <h3
+            style="
+              font-family: var(--font-serif);
+              color: var(--navy);
+              margin: 0 0 0.75rem 0;
+            "
+          >
+            1. Draw on Canvas
+          </h3>
+          <p style="color: var(--muted); margin: 0">
+            Use the web-based Network Builder to place junctions, reservoirs,
+            pipes, and loops. Set demands, elevations, diameters, and boundary
+            conditions. Export a <code>.xwhat.xml</code> package.
+          </p>
+        </div>
+        <div
+          style="
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            border-top: 4px solid var(--navy);
+          "
+        >
+          <div style="font-size: 2.5rem; margin-bottom: 1rem">📋</div>
+          <h3
+            style="
+              font-family: var(--font-serif);
+              color: var(--navy);
+              margin: 0 0 0.75rem 0;
+            "
+          >
+            2. Run in Excel
+          </h3>
+          <p style="color: var(--muted); margin: 0">
+            Open <code>X-WHAT_Model_V1.5.xlsm</code>, import your package, and run
+            the GRG Nonlinear Solver. Be sure to check the 'Roadmap' guide.
+            Save the solved workbook.
+          </p>
+        </div>
+        <div
+          style="
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            border-top: 4px solid var(--teal);
+          "
+        >
+          <div style="font-size: 2.5rem; margin-bottom: 1rem">📊</div>
+          <h3
+            style="
+              font-family: var(--font-serif);
+              color: var(--navy);
+              margin: 0 0 0.75rem 0;
+            "
+          >
+            3. View Results
+          </h3>
+          <p style="color: var(--muted); margin: 0">
+            Upload the solved workbook to the Results Viewer. See pipe flows,
+            node pressures, and a full cost breakdown (pipelines + pumping +
+            tank + foundation) in an interactive dashboard.
+          </p>
+        </div>
+    </section>
+
+    <footer class="shared-footer">
+      <div class="footer-content">
+        <div class="footer-title">
+          Modeling and Design Optimization of Looped Water Distribution Networks using MS Excel: Developing the Open-Source X-WHAT Model
+        </div>
+        <div class="footer-authors">
+          Nobrega, M.G. · Elsherif, S. · Benites, I.M. · Taha,, A.F. · Giacomoni, M.H.
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,5117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>X-WHAT | Network Canvas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+      :root {
+        --navy: #1a3a5c;
+        --navy-dk: #0f2540;
+        --navy-lt: #2d5a8e;
+        --teal: #0d9488;
+        --teal-lt: #99f6e4;
+        --teal-bg: #f0fdfa;
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --ink: #1e293b;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --warn: #f59e0b;
+        --ok: #22c55e;
+        --error: #ef4444;
+        --matrix-pos: #dcfce7;
+        --matrix-neg: #fee2e2;
+        --font-serif: "DM Serif Display", serif;
+        --font-sans: "DM Sans", sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        font-family: var(--font-sans);
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* NAV */
+      #shared-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--navy);
+        color: white;
+        padding: 1rem 2rem;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+      }
+      .nav-brand {
+        font-family: var(--font-serif);
+        font-size: 1.8rem;
+        text-decoration: none;
+        color: white;
+      }
+      .nav-brand .accent-dot {
+        color: var(--teal);
+      }
+      .nav-links {
+        list-style: none;
+        display: flex;
+        gap: 1.5rem;
+        margin: 0;
+        padding: 0;
+      }
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        transition: color 0.2s;
+        font-weight: 500;
+      }
+      .nav-links a:hover,
+      .nav-links a.active {
+        color: var(--teal-lt);
+        border-bottom: 2px solid var(--teal);
+      }
+
+      /* RIBBON */
+      .top-ribbon {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 1rem;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+      }
+      .ribbon-group {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .ribbon-group button {
+        padding: 0.25rem 0.5rem;
+        cursor: pointer;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--navy);
+        font-weight: 500;
+      }
+      .ribbon-group button:hover {
+        background: var(--border);
+      }
+      .btn-settings {
+        background: var(--teal-bg) !important;
+        border-color: var(--teal) !important;
+        color: var(--teal) !important;
+        font-weight: 700 !important;
+      }
+
+      /* LAYOUT */
+      .workspace {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+      .toolbar {
+        width: 80px;
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        padding: 1rem 0;
+        gap: 0.5rem;
+        align-items: center;
+        z-index: 2;
+      }
+      .tool-btn {
+        width: 60px;
+        height: 60px;
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+      }
+      .tool-btn.active {
+        background: var(--teal-bg);
+        border-color: var(--teal);
+        color: var(--teal);
+      }
+      .canvas-container {
+        flex: 1;
+        position: relative;
+        background: #f8fafc;
+        background-image: radial-gradient(var(--border) 1px, transparent 0);
+        background-size: 20px 20px;
+        display: flex;
+        flex-direction: column;
+      }
+      .canvas-container.no-grid {
+        background-image: none;
+      }
+      #loop-instruction-banner {
+        background: var(--warn);
+        color: white;
+        text-align: center;
+        padding: 0.5rem;
+        font-weight: bold;
+        position: absolute;
+        top: 0;
+        width: 100%;
+        z-index: 10;
+      }
+      canvas {
+        flex: 1;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* RIGHT SIDEBAR */
+      .right-sidebar {
+        width: 290px;
+        background: var(--surface);
+        border-left: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        z-index: 2;
+      }
+      .properties-panel {
+        flex: 1;
+        padding: 1rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        border-bottom: 2px solid var(--border);
+      }
+      .properties-panel label {
+        display: flex;
+        flex-direction: column;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .properties-panel input,
+      .properties-panel select {
+        padding: 0.4rem;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        margin-top: 0.2rem;
+        font-family: var(--font-sans);
+      }
+      .properties-panel h3 {
+        margin: 0 0 1rem 0;
+        font-family: var(--font-serif);
+        color: var(--navy);
+        border-bottom: 2px solid var(--teal);
+        padding-bottom: 0.5rem;
+      }
+      .prop-section-title {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--teal);
+        margin-top: 0.5rem;
+        margin-bottom: -0.25rem;
+      }
+      .prop-row {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .prop-row label {
+        flex: 1;
+      }
+      .checkbox-label {
+        flex-direction: row !important;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+      }
+      .checkbox-label input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        margin-top: 0 !important;
+        cursor: pointer;
+      }
+      .legend-panel {
+        padding: 1rem;
+        background: #f8fafc;
+      }
+      .legend-panel h4 {
+        margin: 0 0 0.75rem 0;
+        font-family: var(--font-serif);
+        color: var(--navy);
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+      }
+      .legend-icon {
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .icon-junction {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid var(--teal);
+        background: var(--navy);
+      }
+      .icon-tank {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        background: var(--navy);
+        border: 2px solid var(--teal);
+      }
+      .icon-pump {
+        width: 14px;
+        height: 14px;
+        background: var(--teal);
+        clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        border: 2px solid var(--teal);
+      }
+      .icon-pipe {
+        width: 16px;
+        height: 3px;
+        background: var(--navy);
+        position: relative;
+      }
+      .icon-pipe::after {
+        content: "";
+        position: absolute;
+        right: -2px;
+        top: -2px;
+        border-top: 3px solid transparent;
+        border-bottom: 3px solid transparent;
+        border-left: 5px solid var(--navy);
+      }
+      .icon-loop {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px dashed #f59e0b;
+        border-bottom-color: transparent;
+      }
+      .icon-supply {
+        width: 16px;
+        height: 3px;
+        border-bottom: 2px dashed var(--teal);
+      }
+
+      /* STATUS BAR */
+      .status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        z-index: 3;
+      }
+      .primary-btn {
+        background: var(--teal);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .primary-btn:hover {
+        background: #0b7a70;
+      }
+      .danger-btn {
+        background: var(--error);
+        color: white;
+        border: none;
+        padding: 0.4rem;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 1rem;
+        width: 100%;
+      }
+
+      /* MATRIX ACCORDION */
+      .matrix-preview-accordion {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.95);
+        border-top: 1px solid var(--border);
+        max-height: 40%;
+        display: flex;
+        flex-direction: column;
+      }
+      #toggle-matrix-preview {
+        width: 100%;
+        background: var(--surface);
+        border: none;
+        padding: 0.5rem;
+        cursor: pointer;
+        font-weight: bold;
+        border-bottom: 1px solid var(--border);
+      }
+      #matrix-preview-content {
+        padding: 1rem;
+        overflow-y: auto;
+        display: flex;
+        gap: 2rem;
+      }
+      .matrix-table {
+        border-collapse: collapse;
+        margin-bottom: 1rem;
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+      }
+      .matrix-table th,
+      .matrix-table td {
+        border: 1px solid var(--border);
+        width: 32px;
+        height: 32px;
+        text-align: center;
+      }
+      .matrix-table th {
+        background: var(--navy);
+        color: white;
+        font-weight: normal;
+      }
+      .matrix-pos {
+        background: var(--matrix-pos);
+        color: #166534;
+      }
+      .matrix-neg {
+        background: var(--matrix-neg);
+        color: #991b1b;
+      }
+      .hidden {
+        display: none !important;
+      }
+
+      /* ===== SETTINGS MODAL ===== */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .settings-modal {
+        background: var(--surface);
+        border-radius: 12px;
+        width: min(900px, 95vw);
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+      }
+      .settings-header {
+        background: var(--navy);
+        color: white;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .settings-header h2 {
+        margin: 0;
+        font-family: var(--font-serif);
+        font-size: 1.5rem;
+      }
+      .settings-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0.25rem;
+      }
+      .settings-body {
+        padding: 1.5rem;
+        overflow-y: auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+      }
+      .settings-group {
+        background: var(--bg);
+        border-radius: 8px;
+        padding: 1.25rem;
+        border: 1px solid var(--border);
+      }
+      .settings-group h3 {
+        margin: 0 0 1rem 0;
+        font-family: var(--font-serif);
+        color: var(--navy);
+        font-size: 1.1rem;
+        border-bottom: 2px solid var(--teal);
+        padding-bottom: 0.4rem;
+      }
+      .settings-group label {
+        display: flex;
+        flex-direction: column;
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-bottom: 0.6rem;
+      }
+      .settings-group input,
+      .settings-group select {
+        padding: 0.35rem 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        margin-top: 0.2rem;
+        font-family: var(--font-sans);
+        background: white;
+      }
+      .settings-group-full {
+        grid-column: 1/-1;
+      }
+      .catalog-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+      }
+      .catalog-table th {
+        background: var(--navy);
+        color: white;
+        padding: 0.4rem;
+        text-align: center;
+        font-weight: normal;
+      }
+      .catalog-table td {
+        border: 1px solid var(--border);
+        padding: 0.25rem;
+      }
+      .catalog-table td input {
+        width: 100%;
+        border: none;
+        background: transparent;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        text-align: center;
+        padding: 0.1rem;
+      }
+      .catalog-table td input:focus {
+        outline: 1px solid var(--teal);
+      }
+      .settings-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        background: var(--bg);
+      }
+      .btn-save-settings {
+        background: var(--teal);
+        color: white;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 0.95rem;
+      }
+      .btn-reset-settings {
+        background: none;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        padding: 0.6rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      /* EXPORT MODAL */
+      .export-modal {
+        background: var(--surface);
+        border-radius: 12px;
+        width: min(600px, 95vw);
+        overflow: hidden;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+      }
+      .export-modal-header {
+        background: var(--navy);
+        color: white;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .export-modal-header h2 {
+        margin: 0;
+        font-family: var(--font-serif);
+        font-size: 1.4rem;
+      }
+      .export-modal-body {
+        padding: 1.5rem;
+      }
+      .export-summary {
+        background: var(--teal-bg);
+        border: 1px solid var(--teal);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        line-height: 1.8;
+      }
+      .export-warnings {
+        background: #fffbeb;
+        border: 1px solid var(--warn);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+      }
+      .export-warnings li {
+        margin-bottom: 0.25rem;
+        color: #92400e;
+      }
+      .export-modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+      }
+      .btn-confirm-export {
+        background: var(--teal);
+        color: white;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .btn-cancel-export {
+        background: none;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        padding: 0.6rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .workflow-banner {
+        display: grid;
+        grid-template-columns: minmax(220px, 320px) 1fr;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        background: linear-gradient(90deg, var(--teal-bg), #ffffff 65%);
+        border-bottom: 1px solid var(--border);
+      }
+      .workflow-banner-title {
+        font-family: var(--font-serif);
+        font-size: 1.1rem;
+        color: var(--navy);
+        margin: 0 0 0.25rem 0;
+      }
+      .workflow-banner-meta {
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--teal);
+        font-weight: 700;
+      }
+      .workflow-banner p {
+        margin: 0.2rem 0;
+        font-size: 0.9rem;
+        color: var(--ink);
+      }
+      .workflow-banner code {
+        font-size: 0.85rem;
+      }
+      .guide-modal {
+        background: var(--surface);
+        border-radius: 12px;
+        width: min(820px, 95vw);
+        max-height: 88vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+      }
+      .guide-body {
+        padding: 1.5rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+      .guide-card {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem;
+      }
+      .guide-card h3 {
+        margin: 0 0 0.6rem 0;
+        font-family: var(--font-serif);
+        font-size: 1.05rem;
+        color: var(--navy);
+      }
+      .guide-card p {
+        margin: 0.35rem 0;
+        color: var(--ink);
+        line-height: 1.45;
+      }
+      .guide-card ul {
+        margin: 0.5rem 0 0 1.1rem;
+        padding: 0;
+      }
+      .guide-card li {
+        margin: 0.35rem 0;
+        color: var(--ink);
+      }
+      .guide-card-full {
+        grid-column: 1 / -1;
+      }
+      /* GUIDE ROADMAP */
+      .guide-roadmap-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+      .guide-step {
+        display: flex;
+        gap: 0.85rem;
+        align-items: flex-start;
+        background: var(--surface);
+        border-radius: 8px;
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--border);
+      }
+      .guide-step-num {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--teal);
+        color: white;
+        font-weight: 700;
+        font-size: 0.82rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-top: 0.1rem;
+      }
+      .guide-step-content h4 {
+        margin: 0 0 0.2rem 0;
+        color: var(--navy);
+        font-size: 0.92rem;
+        font-family: var(--font-sans);
+      }
+      .guide-step-content p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .guide-step-content code {
+        background: var(--teal-bg);
+        padding: 0.1rem 0.3rem;
+        border-radius: 3px;
+        font-size: 0.8rem;
+        color: var(--teal);
+        font-family: var(--font-mono);
+      }
+      .guide-step-content a {
+        color: var(--teal);
+      }
+      .guide-step.guide-highlight {
+        border-color: var(--teal);
+        background: var(--teal-bg);
+      }
+      .guide-step.guide-highlight .guide-step-num {
+        background: var(--navy);
+      }
+      .guide-solver-box {
+        background: var(--navy-dk);
+        color: var(--teal-lt);
+        padding: 0.9rem 1rem;
+        border-radius: 6px;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        line-height: 1.8;
+        margin-top: 0.5rem;
+      }
+      @media (max-width: 900px) {
+        .workflow-banner {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="shared-nav">
+      <a href="index.html" class="nav-brand"
+        >X-WHAT<span class="accent-dot">.</span></a
+      >
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="#">Theoretical Framework</a></li>
+        <li><a href="#">Manual</a></li>
+        <li><a href="canvas.html" class="active">Network Builder</a></li>
+        <li><a href="results.html">Results</a></li>
+      </ul>
+    </nav>
+
+    <div class="top-ribbon">
+      <div class="ribbon-group">
+        <span
+          style="font-weight: bold; color: var(--navy); margin-right: 0.5rem"
+          >Network Canvas</span
+        >
+        <span
+          style="
+            border-left: 1px solid var(--border);
+            padding-left: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+          "
+        >
+          <label style="cursor: pointer"
+            ><input type="checkbox" id="toggle-grid" checked /> Grid</label
+          >
+          <label style="cursor: pointer"
+            ><input type="checkbox" id="toggle-snap" checked /> Snap</label
+          >
+          <button id="btn-zoom-out" title="Zoom Out">-</button>
+          <span
+            id="zoom-level"
+            style="
+              font-family: var(--font-mono);
+              font-size: 0.85rem;
+              width: 35px;
+              text-align: center;
+            "
+            >100%</span
+          >
+          <button id="btn-zoom-in" title="Zoom In">+</button>
+          <button id="btn-reset-view" title="Reset View">⟲ 1:1</button>
+          <button id="btn-zoom-fit" title="Zoom to Fit">🔍 Fit</button>
+        </span>
+      </div>
+      <div class="ribbon-group">
+        <button
+          class="btn-settings"
+          id="btn-open-settings"
+          title="Project Settings"
+        >
+          Settings
+        </button>
+        <select
+          id="select-analysis-mode"
+          style="
+            padding: 0.3rem;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            font-family: var(--font-sans);
+            color: var(--navy);
+            font-weight: bold;
+            cursor: pointer;
+            background: #fff;
+          "
+        >
+          <option value="wfp">Mode: WFP / HSP</option>
+          <option value="dom">Mode: DOM (Optimization)</option>
+        </select>
+        <select
+          id="select-case-study"
+          style="
+            padding: 0.3rem;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            font-family: var(--font-sans);
+            color: var(--navy);
+            font-weight: bold;
+            cursor: pointer;
+            background: var(--teal-bg);
+          "
+        >
+          <option value="">Load Tutorial Network...</option>
+          <option value="caseB_wfp">Case (b) | WFP/HSP | Porto 2006</option>
+          <option value="caseB_dom">Case (b) | DOM | Porto 2006</option>
+          <option value="caseC_wfp">
+            Case (c) | WFP/HSP | Huddleston 2004
+          </option>
+          <option value="caseC_dom">Case (c) | DOM | Huddleston 2004</option>
+        </select>
+        <button
+          id="btn-open-guide"
+          title="Workflow Roadmap — step-by-step guide to run the model"
+          style="
+            font-weight: 700;
+            border-color: var(--navy);
+            color: var(--navy);
+          "
+        >
+          📋 Roadmap
+        </button>
+        <button id="btn-save" style="margin-left: 0.5rem">Save JSON</button>
+        <button id="btn-load">Load JSON</button>
+        <button
+          id="btn-clear"
+          style="color: var(--error); border-color: var(--error)"
+        >
+          Clear
+        </button>
+      </div>
+    </div>
+
+    <section class="workflow-banner">
+      <div>
+        <div class="workflow-banner-meta" id="workflow-mode-chip">
+          Mode: WFP / HSP
+        </div>
+        <h2 class="workflow-banner-title" id="workflow-title">
+          Custom Network
+        </h2>
+        <p
+          id="workflow-source"
+          style="font-size: 0.8rem; color: var(--muted); margin: 0.1rem 0 0 0"
+        ></p>
+      </div>
+      <div>
+        <p
+          id="workflow-summary"
+          style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--ink)"
+        >
+          Draw your network on the canvas, then click
+          <strong>Export Network Package</strong> to download the input file for
+          the Excel engine. Click <strong>📋 Roadmap</strong> for the full
+          step-by-step guide.
+        </p>
+        <p
+          id="workflow-focus"
+          style="margin: 0.2rem 0; font-size: 0.85rem; color: var(--muted)"
+        ></p>
+      </div>
+    </section>
+
+    <main class="workspace">
+      <aside class="toolbar">
+        <button class="tool-btn active" data-tool="select" title="Select [S]">
+          Select
+        </button>
+        <button class="tool-btn" data-tool="pan" title="Pan [H]">Pan</button>
+        <button class="tool-btn" data-tool="junction" title="Junction [J]">
+          Junction
+        </button>
+        <button class="tool-btn" data-tool="tank" title="Tank [T]">Tank</button>
+        <button class="tool-btn" data-tool="pipe" title="Pipe [P]">Pipe</button>
+        <button class="tool-btn" data-tool="loop" title="Loop [L]">Loop</button>
+        <button class="tool-btn" data-tool="delete" title="Delete [Del]">
+          Delete
+        </button>
+      </aside>
+
+      <section class="canvas-container" id="canvas-container">
+        <div id="loop-instruction-banner" class="hidden">
+          Click pipes in clockwise order. Press Enter to confirm, Esc to cancel.
+        </div>
+        <canvas id="network-canvas"></canvas>
+        <div class="matrix-preview-accordion">
+          <button id="toggle-matrix-preview">Matrix Preview ▲</button>
+          <div id="matrix-preview-content" class="hidden">
+            <div id="fd-preview">
+              <p style="color: var(--muted)">
+                Draw junctions and pipes to generate Fd.
+              </p>
+            </div>
+            <div id="fl-preview">
+              <p style="color: var(--muted)">Define loops to generate Fl.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="right-sidebar">
+        <div class="properties-panel" id="properties-panel">
+          <div
+            style="color: var(--muted); text-align: center; margin-top: 2rem"
+          >
+            Click an element to edit
+          </div>
+        </div>
+        <div class="legend-panel">
+          <h4>Network Legend</h4>
+          <div class="legend-item">
+            <div class="legend-icon"><div class="icon-junction"></div></div>
+            Junction
+          </div>
+          <div class="legend-item">
+            <div class="legend-icon"><div class="icon-tank"></div></div>
+            Tank / Reservoir
+          </div>
+          <div class="legend-item">
+            <div class="legend-icon"><div class="icon-pipe"></div></div>
+            Pipe Segment
+          </div>
+          <div class="legend-item">
+            <div class="legend-icon"><div class="icon-loop"></div></div>
+            Energy Loop
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="status-bar">
+      <div id="network-stats">
+        Nodes: 0 | Pipes: 0 | Loops: 0 | Fd: 0×0 | Fl: 0×0
+      </div>
+      <div
+        id="settings-summary"
+        style="color: var(--teal); font-size: 0.8rem"
+      ></div>
+      <button id="btn-export" class="primary-btn">
+        ⬇ Export Network Package
+      </button>
+    </footer>
+
+    <!-- ===== SETTINGS MODAL ===== -->
+    <div class="modal-overlay hidden" id="settings-overlay">
+      <div class="settings-modal">
+        <div class="settings-header">
+          <h2>⚙ Project Settings</h2>
+          <button class="settings-close" id="settings-close-btn">✕</button>
+        </div>
+        <div class="settings-body">
+          <!-- Group 1: Hydraulic Model -->
+          <div class="settings-group">
+            <h3>Hydraulic Model</h3>
+            <label
+              >Head Loss Method
+              <select id="s-frictionMethod">
+                <option value="D-W">Darcy-Weisbach (D-W)</option>
+                <option value="H-W">Hazen-Williams (H-W)</option>
+              </select>
+            </label>
+            <label
+              >Kinematic Viscosity ν (m²/s)
+              <input
+                type="number"
+                id="s-kinematicViscosity"
+                step="1e-7"
+                value="1e-6"
+                title="Use SI units. Example: water at room temperature is about 0.000001 m2/s."
+              />
+            </label>
+            <label
+              >Fluid Density ρ (kg/m³)
+              <input type="number" id="s-density" value="1000" />
+            </label>
+          </div>
+          <!-- Group 2: Economic Parameters -->
+          <div class="settings-group">
+            <h3>Economic Parameters</h3>
+            <div class="prop-row">
+              <label
+                >Energy Cost Pc (USD/kWh)
+                <input
+                  type="number"
+                  id="s-energyCostPerKwh"
+                  step="0.01"
+                  value="0.20"
+                />
+              </label>
+              <label
+                >Annual Rate ir (fraction)
+                <input
+                  type="number"
+                  id="s-energyIncreaseRate"
+                  step="0.01"
+                  value="0.06"
+                  title="Enter fractions, not percentages. Example: 0.06 means 6%."
+                />
+              </label>
+            </div>
+            <div class="prop-row">
+              <label
+                >System Lifespan (yr)
+                <input type="number" id="s-systemLifespan" value="25" />
+              </label>
+              <label
+                >Interest Rate i (fraction)
+                <input
+                  type="number"
+                  id="s-interestRate"
+                  step="0.01"
+                  value="0.12"
+                  title="Enter fractions, not percentages. Example: 0.12 means 12%."
+                />
+              </label>
+            </div>
+            <div class="prop-row">
+              <label
+                >Day Factor k₁
+                <input type="number" id="s-dayFactor" step="0.1" value="1.2" />
+              </label>
+              <label
+                >Hour Factor k₂
+                <input type="number" id="s-hourFactor" step="0.1" value="1.5" />
+              </label>
+            </div>
+            <label
+              >Operational Cost Rate (fraction) α
+              <input
+                type="number"
+                id="s-operationalCostRate"
+                step="0.01"
+                value="0"
+                title="Enter fractions, not percentages. Example: 0.05 means 5%."
+              />
+            </label>
+          </div>
+          <!-- Group 3: Structural (Tanks) -->
+          <div class="settings-group">
+            <h3>Structural (Tanks)</h3>
+            <div class="prop-row">
+              <label
+                >Material Cost Cm (USD/m²)
+                <input type="number" id="s-tankMaterialCost" value="60" />
+              </label>
+              <label
+                >Wind Speed Vk (m/s)
+                <input type="number" id="s-windSpeed" value="40" />
+              </label>
+            </div>
+            <div class="prop-row">
+              <label
+                >Wind Exponent p
+                <input
+                  type="number"
+                  id="s-windExponent"
+                  step="0.05"
+                  value="0.3"
+                />
+              </label>
+              <label
+                >Reservoir Fill (days)
+                <input type="number" id="s-reservoirFillDays" value="1" />
+              </label>
+            </div>
+          </div>
+          <!-- Group 4: Pipe Diameter Catalog (full width) -->
+          <div class="settings-group settings-group-full">
+            <h3>Pipe Diameter Catalog</h3>
+            <div style="overflow-x: auto">
+              <table class="catalog-table">
+                <thead>
+                  <tr>
+                    <th>D (mm)</th>
+                    <th>Cost (USD/m)</th>
+                    <th>ε D-W (mm)</th>
+                    <th>C H-W</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="catalog-tbody"></tbody>
+              </table>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem">
+              <button
+                id="btn-add-catalog-row"
+                style="
+                  padding: 0.35rem 0.75rem;
+                  border-radius: 4px;
+                  border: 1px solid var(--teal);
+                  background: var(--teal-bg);
+                  color: var(--teal);
+                  cursor: pointer;
+                  font-weight: bold;
+                "
+              >
+                + Add Row
+              </button>
+              <button
+                id="btn-reset-catalog"
+                style="
+                  padding: 0.35rem 0.75rem;
+                  border-radius: 4px;
+                  border: 1px solid var(--border);
+                  background: none;
+                  color: var(--muted);
+                  cursor: pointer;
+                "
+              >
+                ↺ Reset to Defaults
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-footer">
+          <button class="btn-reset-settings" id="settings-cancel-btn">
+            Cancel
+          </button>
+          <button class="btn-save-settings" id="settings-save-btn">
+            ✓ Save Settings
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== EXPORT MODAL ===== -->
+    <div class="modal-overlay hidden" id="export-overlay">
+      <div class="export-modal">
+        <div class="export-modal-header">
+          <h2>⬇ Export X-WHAT Network Package</h2>
+          <button class="settings-close" id="export-close-btn">✕</button>
+        </div>
+        <div class="export-modal-body">
+          <div class="export-summary" id="export-summary-text"></div>
+          <div class="export-warnings hidden" id="export-warnings-box">
+            <strong>⚠ Warnings:</strong>
+            <ul id="export-warnings-list"></ul>
+          </div>
+          <p style="font-size: 0.9rem; color: var(--muted); margin: 0">
+            Recommended workflow: export the versioned
+            <code>.xwhat.xml</code> package, open
+            <strong>X-WHAT_Model_V1.xlsm</strong>, click
+            <strong>Import Network</strong>, run the Solver, then upload the
+            solved workbook to
+            <a href="results.html" style="color: var(--teal)">results.html</a>.
+            A legacy pre-filled <code>.xlsx</code> export remains available for
+            compatibility.
+          </p>
+        </div>
+        <div class="export-modal-footer">
+          <button class="btn-cancel-export" id="export-cancel-btn">
+            Cancel
+          </button>
+          <button class="btn-cancel-export" id="export-legacy-btn">
+            Legacy .xlsx
+          </button>
+          <button class="btn-confirm-export" id="export-confirm-btn">
+            ⬇ Download .xwhat.xml
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== GUIDE MODAL ===== -->
+    <div class="modal-overlay hidden" id="guide-overlay">
+      <div class="guide-modal">
+        <div class="export-modal-header">
+          <h2>📋 Workflow Roadmap</h2>
+          <button class="settings-close" id="guide-close-btn">X</button>
+        </div>
+        <div class="guide-body" id="guide-body"></div>
+        <div class="export-modal-footer">
+          <button class="btn-confirm-export" id="guide-close-footer-btn">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+    <script>
+      /* =========================================
+   DEFAULT SETTINGS
+   ========================================= */
+      const DEFAULT_SETTINGS = {
+        frictionMethod: "D-W",
+        kinematicViscosity: 1e-6,
+        density: 1000,
+        energyCostPerKwh: 0.2,
+        energyIncreaseRate: 0.06,
+        systemLifespan: 25,
+        interestRate: 0.12,
+        operationalCostRate: 0,
+        dayFactor: 1.2,
+        hourFactor: 1.5,
+        reservoirFillDays: 1,
+        tankMaterialCost: 60,
+        windSpeed: 40,
+        windExponent: 0.3,
+        pipeCatalog: [
+          { d: 25.4, cost: 2, epsilon: 0.26, hw: 130 },
+          { d: 50.8, cost: 5, epsilon: 0.26, hw: 130 },
+          { d: 76.2, cost: 8, epsilon: 0.26, hw: 130 },
+          { d: 101.6, cost: 11, epsilon: 0.26, hw: 130 },
+          { d: 152.4, cost: 16, epsilon: 0.26, hw: 130 },
+          { d: 200, cost: 23, epsilon: 0.26, hw: 130 },
+          { d: 254, cost: 32, epsilon: 0.26, hw: 130 },
+          { d: 304.8, cost: 50, epsilon: 0.26, hw: 130 },
+          { d: 355.6, cost: 60, epsilon: 0.26, hw: 130 },
+          { d: 406.4, cost: 90, epsilon: 0.26, hw: 130 },
+          { d: 457.2, cost: 130, epsilon: 0.26, hw: 130 },
+          { d: 508, cost: 170, epsilon: 0.26, hw: 130 },
+          { d: 558.8, cost: 300, epsilon: 0.26, hw: 130 },
+          { d: 609.6, cost: 550, epsilon: 0.26, hw: 130 },
+        ],
+      };
+
+      const ANALYSIS_MODE_META = {
+        wfp: {
+          chip: "Mode: WFP / HSP",
+          label: "WFP / HSP",
+          title: "Water Flow Problem",
+          summary:
+            "Given pipe diameters, demands, and fixed reservoir heads, the Solver finds the flow in every pipe that satisfies both mass conservation and energy balance.",
+          focus:
+            "Set elevations, demands, and fixed pressure heads for all reservoirs. Pipe diameters and roughness values must also be defined before exporting.",
+        },
+        dom: {
+          chip: "Mode: DOM",
+          label: "DOM",
+          title: "Design Optimization Model",
+          summary:
+            "Excel Solver minimizes total system cost (pipelines + pumping energy + tank materials + foundation) by jointly adjusting pipe flows and selected design variables such as reservoir heads and tower heights.",
+          focus:
+            "Set starting values for reservoir heads and tower heights. The Solver will optimize them subject to pressure and feasibility constraints.",
+        },
+      };
+
+      function normalizeAnalysisMode(mode) {
+        return String(mode || "wfp").toLowerCase() === "dom" ? "dom" : "wfp";
+      }
+
+      function cloneSettings(overrides = {}) {
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        Object.assign(settings, overrides);
+        if (overrides.pipeCatalog)
+          settings.pipeCatalog = cloneDeep(overrides.pipeCatalog);
+        return settings;
+      }
+
+      function prependCatalogEntry(entry) {
+        const catalog = cloneDeep(DEFAULT_SETTINGS.pipeCatalog);
+        if (!catalog.some((item) => Number(item.d) === Number(entry.d)))
+          catalog.unshift(entry);
+        return catalog;
+      }
+
+      /* =========================================
+   NETWORK STATE
+   ========================================= */
+      const networkState = {
+        nodes: [],
+        pipes: [],
+        loops: [],
+        zoom: 1.0,
+        pan: { x: 0, y: 0 },
+        activeMode: "select",
+        analysisMode: "wfp",
+        activeScenarioId: "",
+        activeScenarioLabel: "Custom Network",
+        activeScenarioSource:
+          "Build a network from scratch or load an audited benchmark from the paper/workbook.",
+        activeScenarioDescription: "",
+        activeScenarioNotes: [],
+        activeScenarioSolver: [],
+        settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
+      };
+      let selectedElement = null,
+        hoveredElement = null,
+        pipeStartNode = null;
+      let isDragging = false,
+        dragOffset = { x: 0, y: 0 };
+      let currentLoopPipes = [];
+      let isPanning = false,
+        panStart = { x: 0, y: 0 };
+
+      const COLORS = {
+        navy: "#1a3a5c",
+        teal: "#0d9488",
+        muted: "#64748b",
+        white: "#ffffff",
+        loop: "#f59e0b",
+      };
+      const canvas = document.getElementById("network-canvas");
+      const ctx = canvas.getContext("2d");
+      const propertiesPanel = document.getElementById("properties-panel");
+
+      function resizeCanvas() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight - 40;
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      function triggerDataUpdate() {
+        updatePropertiesPanel();
+        updateMatrices();
+        updateSettingsSummary();
+        updateWorkflowSummary();
+      }
+
+      function updateWorkflowSummary() {
+        const mode =
+          ANALYSIS_MODE_META[normalizeAnalysisMode(networkState.analysisMode)];
+        document.getElementById("select-analysis-mode").value =
+          normalizeAnalysisMode(networkState.analysisMode);
+        document.getElementById("workflow-mode-chip").textContent = mode.chip;
+        document.getElementById("workflow-title").textContent =
+          networkState.activeScenarioLabel || "Custom Network";
+        document.getElementById("workflow-source").textContent =
+          networkState.activeScenarioSource || "";
+
+        if (networkState.activeScenarioId) {
+          // Tutorial network loaded
+          document.getElementById("workflow-summary").innerHTML =
+            (networkState.activeScenarioDescription || mode.summary) +
+            " Click <strong>📋 Roadmap</strong> for the step-by-step guide to export, run in Excel, and view results.";
+        } else {
+          // Custom / blank canvas
+          document.getElementById("workflow-summary").innerHTML =
+            "Draw your network on the canvas, then click <strong>⬇ Export Network Package</strong> to download the input file for the Excel engine. Click <strong>📋 Roadmap</strong> for the full step-by-step guide.";
+        }
+
+        const noteText = (networkState.activeScenarioNotes || []).length
+          ? networkState.activeScenarioNotes.join(" | ")
+          : mode.focus;
+        document.getElementById("workflow-focus").textContent = noteText;
+      }
+
+      /* =========================================
+   SETTINGS SUMMARY
+   ========================================= */
+      function updateSettingsSummary() {
+        const s = networkState.settings;
+        const mode =
+          ANALYSIS_MODE_META[normalizeAnalysisMode(networkState.analysisMode)];
+        document.getElementById(
+          "settings-summary"
+        ).textContent = `${mode.label} | ${s.frictionMethod} | ${s.pipeCatalog.length} sizes | ${s.systemLifespan}yr | Pc=${s.energyCostPerKwh}`;
+      }
+      updateSettingsSummary();
+      updateWorkflowSummary();
+
+      function getGuideSolverLines(workbookModel) {
+        if (
+          Array.isArray(networkState.activeScenarioSolver) &&
+          networkState.activeScenarioSolver.length
+        ) {
+          return networkState.activeScenarioSolver;
+        }
+
+        const nodeCount = workbookModel.workbookNodes.length;
+        const pipeCount = workbookModel.pipes.length;
+        const loopCount = workbookModel.loops.length;
+        if (normalizeAnalysisMode(networkState.analysisMode) === "dom") {
+          return [
+            "Objective: Memory!BT51 (Minimize).",
+            `Changing cells: Memory!AI50:AI${
+              49 + pipeCount
+            } plus the audited reservoir/tank design cells in columns AA and T.`,
+            `Constraints: Memory!BE51:BE${50 + nodeCount} = 0, Memory!BH51:BH${
+              50 + loopCount
+            } = 0, and workbook pressure bounds in column BK.`,
+            "Method: GRG Nonlinear.",
+          ];
+        }
+
+        return [
+          "Objective: feasibility only.",
+          `Changing cells: Memory!AI50:AI${49 + pipeCount}.`,
+          `Constraints: Memory!BE51:BE${50 + nodeCount} = 0 and Memory!BH51:BH${
+            50 + loopCount
+          } = 0.`,
+          "Method: GRG Nonlinear.",
+        ];
+      }
+
+      function openGuide() {
+        const workbookModel = buildWorkbookModel();
+        const mode =
+          ANALYSIS_MODE_META[normalizeAnalysisMode(networkState.analysisMode)];
+        const isTutorial = !!networkState.activeScenarioId;
+        const isDOM =
+          normalizeAnalysisMode(networkState.analysisMode) === "dom";
+        const N = workbookModel.workbookNodes.length;
+        const P = workbookModel.pipes.length;
+        const L = workbookModel.loops.length;
+        const solverLines = getGuideSolverLines(workbookModel);
+
+        // Build step-by-step roadmap
+        const steps = [];
+
+        if (isTutorial) {
+          steps.push({
+            title: "Tutorial Network Loaded",
+            body: `<strong>${
+              networkState.activeScenarioLabel
+            }</strong> is pre-loaded on the canvas. Source: ${
+              networkState.activeScenarioSource || "—"
+            }`,
+            highlight: true,
+          });
+        } else {
+          steps.push({
+            title: "Step 1 — Build Your Network",
+            body: "Use the toolbar on the left to place <strong>Junctions</strong>, <strong>Tanks/Reservoirs</strong>, and <strong>Pipes</strong>. Then define <strong>Loops</strong> for the energy balance. Click any element to edit its properties in the right panel.",
+          });
+        }
+
+        steps.push({
+          title: isTutorial
+            ? "Step 1 — Review the Network Data"
+            : "Step 2 — Check All Inputs",
+          body: `Current network: <strong>${N} hydraulic nodes</strong>, <strong>${P} pipes</strong>, <strong>${L} loops</strong>.
+        Make sure every node has an elevation and demand. Every reservoir or tank must have a fixed head (hr).
+        ${
+          isDOM
+            ? "For DOM: reservoir heads and tower heights are <em>starting values</em> for the Solver — set them to reasonable initial estimates."
+            : 'For WFP: mark all fixed-head boundary nodes (reservoirs) using the "Fixed Head Node" checkbox in each node\'s properties.'
+        }
+        ${
+          (networkState.activeScenarioNotes || []).length
+            ? "<br><br><strong>Case-specific notes:</strong><ul>" +
+              networkState.activeScenarioNotes
+                .map((n) => `<li>${n}</li>`)
+                .join("") +
+              "</ul>"
+            : ""
+        }`,
+        });
+
+        steps.push({
+          title: isTutorial
+            ? "Step 2 — Export the Network Package"
+            : "Step 3 — Export the Network Package",
+          body: "Click the <strong>⬇ Export Network Package</strong> button at the bottom of the screen. Choose <strong>.xwhat.xml</strong> (recommended). This file contains all node data, pipe geometry, incidence matrices, and global parameters ready to be imported into Excel.",
+        });
+
+        steps.push({
+          title: isTutorial
+            ? "Step 3 — Open the Excel Workbook"
+            : "Step 4 — Open the Excel Workbook",
+          body: "Open <code>X-WHAT_Model_V1.xlsm</code> in Microsoft Excel. Make sure macros are enabled. Click <strong>Import Network</strong> in the workbook's ribbon or macro panel, then select the <code>.xwhat.xml</code> file you just downloaded. The workbook will populate all input cells automatically.",
+        });
+
+        let solverImageHtml = "";
+        if (isTutorial) {
+          // Map the active scenario ID to the corresponding uploaded image
+          const imageMap = {
+            caseB_wfp: "Images/Solver_Config_Case_b_WFP.png",
+            caseB_dom: "Images/Solver_Config_Case_b_DOM.png",
+            caseC_wfp: "Images/Solver_Config_Case_c_WFP.png",
+            caseC_dom: "Images/Solver_Config_Case_c_DOM.png",
+          };
+
+          const imgSrc = imageMap[networkState.activeScenarioId];
+          if (imgSrc) {
+            solverImageHtml = `
+            <div style="margin-top: 1rem; text-align: center;">
+              <img src="${imgSrc}" alt="Solver Configuration" style="max-width: 100%; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            </div>`;
+          }
+        }
+
+        steps.push({
+          title: isTutorial
+            ? "Step 4 — Configure and Run the Solver"
+            : "Step 5 — Configure and Run the Solver",
+          body: `Go to <strong>Data → Solver</strong> in Excel. Configure as follows:
+        <div class="guide-solver-box">${solverLines.join(
+          "<br>"
+        )}</div>${solverImageHtml}`,
+        });
+
+        steps.push({
+          title: isTutorial
+            ? "Step 5 — Save and Upload Results"
+            : "Step 6 — Save and Upload Results",
+          body: 'After the Solver converges, <strong>save the workbook</strong> (Ctrl+S). Then go to <a href="results.html" target="_blank">Results page</a> and upload the saved <code>.xlsm</code> or <code>.xlsx</code> file. The dashboard will display pipe flows, node pressures, and cost breakdown automatically.',
+        });
+
+        document.getElementById("guide-body").innerHTML = steps
+          .map(
+            (step) => `
+        <div class="guide-step ${step.highlight ? "guide-highlight" : ""}">
+            <div class="guide-step-num">${
+              step.highlight ? "★" : steps.indexOf(step) + (isTutorial ? 0 : 0)
+            }</div>
+            <div class="guide-step-content">
+                <h4>${step.title}</h4>
+                <p>${step.body}</p>
+            </div>
+        </div>`
+          )
+          .join("");
+
+        // Re-number the step circles properly
+        const stepEls = document.querySelectorAll(
+          "#guide-body .guide-step:not(.guide-highlight) .guide-step-num"
+        );
+        stepEls.forEach((el, i) => (el.textContent = i + 1));
+
+        document.getElementById("guide-overlay").classList.remove("hidden");
+      }
+
+      function closeGuide() {
+        document.getElementById("guide-overlay").classList.add("hidden");
+      }
+
+      /* =========================================
+   ZOOM / PAN / SNAP
+   ========================================= */
+      function updateZoomDisplay() {
+        document.getElementById("zoom-level").textContent =
+          Math.round(networkState.zoom * 100) + "%";
+      }
+
+      function handleZoom(
+        amount,
+        focusX = canvas.width / 2,
+        focusY = canvas.height / 2
+      ) {
+        const nz = Math.min(Math.max(0.2, networkState.zoom * amount), 5);
+        networkState.pan.x =
+          focusX - (focusX - networkState.pan.x) * (nz / networkState.zoom);
+        networkState.pan.y =
+          focusY - (focusY - networkState.pan.y) * (nz / networkState.zoom);
+        networkState.zoom = nz;
+        updateZoomDisplay();
+      }
+
+      document
+        .getElementById("btn-zoom-in")
+        .addEventListener("click", () => handleZoom(1.2));
+      document
+        .getElementById("btn-zoom-out")
+        .addEventListener("click", () => handleZoom(0.8));
+      document
+        .getElementById("btn-reset-view")
+        .addEventListener("click", () => {
+          networkState.zoom = 1;
+          networkState.pan = { x: 0, y: 0 };
+          updateZoomDisplay();
+        });
+      document.getElementById("btn-zoom-fit").addEventListener("click", () => {
+        if (!networkState.nodes.length) return;
+        let minX = Infinity,
+          maxX = -Infinity,
+          minY = Infinity,
+          maxY = -Infinity;
+        networkState.nodes.forEach((n) => {
+          minX = Math.min(minX, n.x);
+          maxX = Math.max(maxX, n.x);
+          minY = Math.min(minY, n.y);
+          maxY = Math.max(maxY, n.y);
+        });
+        const pad = 60,
+          cw = maxX - minX,
+          ch = maxY - minY;
+        if (!cw && !ch) {
+          networkState.zoom = 1;
+          networkState.pan = {
+            x: canvas.width / 2 - minX,
+            y: canvas.height / 2 - minY,
+          };
+        } else {
+          networkState.zoom = Math.min(
+            (canvas.width - pad * 2) / cw,
+            (canvas.height - pad * 2) / ch,
+            2
+          );
+          networkState.pan = {
+            x: canvas.width / 2 - (minX + cw / 2) * networkState.zoom,
+            y: canvas.height / 2 - (minY + ch / 2) * networkState.zoom,
+          };
+        }
+        updateZoomDisplay();
+      });
+      document
+        .getElementById("toggle-grid")
+        .addEventListener("change", (e) =>
+          document
+            .getElementById("canvas-container")
+            .classList.toggle("no-grid", !e.target.checked)
+        );
+      canvas.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const r = canvas.getBoundingClientRect();
+        handleZoom(
+          e.deltaY < 0 ? 1.1 : 0.9,
+          e.clientX - r.left,
+          e.clientY - r.top
+        );
+      });
+      function applySnap(v) {
+        return document.getElementById("toggle-snap").checked
+          ? Math.round(v / 20) * 20
+          : v;
+      }
+
+      /* =========================================
+   ID GENERATOR
+   ========================================= */
+      function getNextAvailableId(prefix, type) {
+        let n = 1;
+        while (true) {
+          const id = `${prefix}${n}`;
+          let exists =
+            type === "pipe"
+              ? networkState.pipes.some((p) => p.id === id)
+              : type === "loop"
+              ? networkState.loops.some((l) => l.id === id)
+              : networkState.nodes.some((n) => n.id === id);
+          if (!exists) return id;
+          n++;
+        }
+      }
+
+      /* =========================================
+   HIT TESTING
+   ========================================= */
+      function getMousePos(e) {
+        const r = canvas.getBoundingClientRect();
+        return {
+          x: (e.clientX - r.left - networkState.pan.x) / networkState.zoom,
+          y: (e.clientY - r.top - networkState.pan.y) / networkState.zoom,
+        };
+      }
+      function getNodeAt(x, y) {
+        for (let i = networkState.nodes.length - 1; i >= 0; i--) {
+          const n = networkState.nodes[i];
+          if (Math.hypot(n.x - x, n.y - y) <= 20) return n;
+        }
+        return null;
+      }
+      function getPipeAt(x, y) {
+        for (let p of networkState.pipes) {
+          const n1 = networkState.nodes.find((n) => n.id === p.from),
+            n2 = networkState.nodes.find((n) => n.id === p.to);
+          if (!n1 || !n2) continue;
+          const A = x - n1.x,
+            B = y - n1.y,
+            C = n2.x - n1.x,
+            D = n2.y - n1.y,
+            lenSq = C * C + D * D;
+          let param = -1,
+            xx,
+            yy;
+          if (lenSq !== 0) param = (A * C + B * D) / lenSq;
+          if (param < 0) {
+            xx = n1.x;
+            yy = n1.y;
+          } else if (param > 1) {
+            xx = n2.x;
+            yy = n2.y;
+          } else {
+            xx = n1.x + param * C;
+            yy = n1.y + param * D;
+          }
+          if (Math.hypot(x - xx, y - yy) <= 6) return p;
+        }
+        return null;
+      }
+      function getLoopAt(x, y) {
+        for (let i = networkState.loops.length - 1; i >= 0; i--) {
+          const l = networkState.loops[i];
+          if (l.x !== undefined && Math.hypot(l.x - x, l.y - y) <= 15) return l;
+        }
+        return null;
+      }
+
+      /* =========================================
+   EVENTS
+   ========================================= */
+      document.querySelectorAll(".tool-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          document
+            .querySelectorAll(".tool-btn")
+            .forEach((b) => b.classList.remove("active"));
+          e.currentTarget.classList.add("active");
+          networkState.activeMode = e.currentTarget.dataset.tool;
+          const banner = document.getElementById("loop-instruction-banner");
+          if (networkState.activeMode === "loop")
+            banner.classList.remove("hidden");
+          else {
+            banner.classList.add("hidden");
+            currentLoopPipes = [];
+          }
+          pipeStartNode = null;
+        });
+      });
+
+      canvas.addEventListener("mousedown", (e) => {
+        if (
+          e.button === 1 ||
+          (e.button === 0 && (e.shiftKey || networkState.activeMode === "pan"))
+        ) {
+          isPanning = true;
+          panStart = {
+            x: e.clientX - networkState.pan.x,
+            y: e.clientY - networkState.pan.y,
+          };
+          canvas.style.cursor = "grabbing";
+          return;
+        }
+        const pos = getMousePos(e),
+          cn = getNodeAt(pos.x, pos.y),
+          cp = getPipeAt(pos.x, pos.y),
+          cl = getLoopAt(pos.x, pos.y);
+        if (networkState.activeMode === "select") {
+          selectedElement = cn || cl || cp;
+          if (selectedElement && cn) {
+            isDragging = true;
+            dragOffset = { x: pos.x - cn.x, y: pos.y - cn.y };
+          }
+          triggerDataUpdate();
+        } else if (["junction", "tank"].includes(networkState.activeMode)) {
+          const type = networkState.activeMode;
+          const prefix = type === "junction" ? "J" : "T";
+          const id = getNextAvailableId(prefix, "node");
+          networkState.nodes.push({
+            id,
+            type,
+            x: applySnap(pos.x),
+            y: applySnap(pos.y),
+            elevation: 0,
+            demand: 0,
+          });
+          selectedElement = networkState.nodes[networkState.nodes.length - 1];
+          triggerDataUpdate();
+        } else if (networkState.activeMode === "pipe") {
+          if (cn) {
+            if (!pipeStartNode) {
+              pipeStartNode = cn;
+            } else if (pipeStartNode.id !== cn.id) {
+              const id = getNextAvailableId("P", "pipe");
+              const defaultD = networkState.settings.pipeCatalog[4]?.d || 152.4;
+              networkState.pipes.push({
+                id,
+                from: pipeStartNode.id,
+                to: cn.id,
+                length: 100,
+                diameter: defaultD,
+                frictionModel: "D-W",
+                roughness: 0.26,
+                hwCoeff: 130,
+              });
+              pipeStartNode = null;
+              selectedElement =
+                networkState.pipes[networkState.pipes.length - 1];
+              triggerDataUpdate();
+            }
+          } else {
+            pipeStartNode = null;
+          }
+        } else if (networkState.activeMode === "delete") {
+          const target = cn || cl || cp;
+          if (target) {
+            if (target.directions !== undefined)
+              networkState.loops = networkState.loops.filter(
+                (l) => l.id !== target.id
+              );
+            else if (target.from !== undefined) {
+              networkState.pipes = networkState.pipes.filter(
+                (p) => p.id !== target.id
+              );
+              networkState.loops = networkState.loops.filter(
+                (l) => !l.pipeIds.includes(target.id)
+              );
+            } else {
+              networkState.nodes = networkState.nodes.filter(
+                (n) => n.id !== target.id
+              );
+              networkState.pipes = networkState.pipes.filter((p) => {
+                if (p.from === target.id || p.to === target.id) {
+                  networkState.loops = networkState.loops.filter(
+                    (l) => !l.pipeIds.includes(p.id)
+                  );
+                  return false;
+                }
+                return true;
+              });
+            }
+            if (selectedElement === target) selectedElement = null;
+            triggerDataUpdate();
+          }
+        } else if (networkState.activeMode === "loop") {
+          if (cp) {
+            const idx = currentLoopPipes.indexOf(cp.id);
+            if (idx === -1) currentLoopPipes.push(cp.id);
+            else currentLoopPipes.splice(idx, 1);
+          }
+        }
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        if (isPanning) {
+          networkState.pan.x = e.clientX - panStart.x;
+          networkState.pan.y = e.clientY - panStart.y;
+          return;
+        }
+        const pos = getMousePos(e);
+        hoveredElement =
+          getNodeAt(pos.x, pos.y) ||
+          getLoopAt(pos.x, pos.y) ||
+          getPipeAt(pos.x, pos.y);
+        if (
+          isDragging &&
+          selectedElement &&
+          selectedElement.x !== undefined &&
+          selectedElement.directions === undefined
+        ) {
+          selectedElement.x = applySnap(pos.x - dragOffset.x);
+          selectedElement.y = applySnap(pos.y - dragOffset.y);
+        }
+        if (networkState.activeMode === "pan") canvas.style.cursor = "grab";
+        else
+          canvas.style.cursor = hoveredElement
+            ? "pointer"
+            : networkState.activeMode === "select"
+            ? "default"
+            : "crosshair";
+      });
+      canvas.addEventListener("mouseup", () => {
+        isDragging = false;
+        isPanning = false;
+      });
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          selectedElement = null;
+          pipeStartNode = null;
+          currentLoopPipes = [];
+          triggerDataUpdate();
+        }
+        if (
+          e.key === "Enter" &&
+          networkState.activeMode === "loop" &&
+          currentLoopPipes.length > 2
+        ) {
+          const dirs = calculateLoopDirections(currentLoopPipes);
+          if (dirs) {
+            const lid = getNextAvailableId("L", "loop");
+            networkState.loops.push({
+              id: lid,
+              pipeIds: [...currentLoopPipes],
+              directions: dirs,
+            });
+            currentLoopPipes = [];
+            triggerDataUpdate();
+          }
+        }
+        if (e.key === "s" || e.key === "S") setTool("select");
+        if (e.key === "j" || e.key === "J") setTool("junction");
+        if (e.key === "t" || e.key === "T") setTool("tank");
+        if (e.key === "m" || e.key === "M") setTool("pump");
+        if (e.key === "p" || e.key === "P") setTool("pipe");
+        if (e.key === "l" || e.key === "L") setTool("loop");
+        if (e.key === "h" || e.key === "H") setTool("pan");
+      });
+
+      function setTool(tool) {
+        document.querySelectorAll(".tool-btn").forEach((b) => {
+          b.classList.remove("active");
+          if (b.dataset.tool === tool) b.classList.add("active");
+        });
+        networkState.activeMode = tool;
+      }
+
+      function calculateLoopDirections(pipeIds) {
+        const pipes = pipeIds.map((id) =>
+          networkState.pipes.find((p) => p.id === id)
+        );
+        const dirs = [];
+        for (let i = 0; i < pipes.length; i++) {
+          const curr = pipes[i],
+            next = pipes[(i + 1) % pipes.length];
+          let common = null;
+          if (curr.to === next.from || curr.to === next.to) common = curr.to;
+          else if (curr.from === next.from || curr.from === next.to)
+            common = curr.from;
+          if (!common) {
+            alert("Pipes don't form a continuous sequence!");
+            return null;
+          }
+          dirs.push(common === curr.to ? 1 : -1);
+        }
+        return dirs;
+      }
+
+      /* =========================================
+   DRAW ENGINE
+   ========================================= */
+      function drawArrowhead(ctx, x, y, angle, color = COLORS.navy) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-10, 5);
+        ctx.lineTo(-10, -5);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawLoopSymbol(ctx, x, y, id, isSelected) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.strokeStyle = isSelected ? COLORS.teal : COLORS.loop;
+        ctx.fillStyle = isSelected ? COLORS.teal : COLORS.loop;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 14, -Math.PI / 2, Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-14, 0);
+        ctx.lineTo(-18, -6);
+        ctx.lineTo(-10, -6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.font = 'bold 12px "DM Sans"';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(id, 0, 0);
+        ctx.restore();
+      }
+
+      function drawLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(networkState.pan.x, networkState.pan.y);
+        ctx.scale(networkState.zoom, networkState.zoom);
+
+        // Loop centroids
+        networkState.loops.forEach((loop) => {
+          let cx = 0,
+            cy = 0,
+            cnt = 0;
+          const nset = new Set();
+          loop.pipeIds.forEach((pid) => {
+            const p = networkState.pipes.find((p) => p.id === pid);
+            if (p) {
+              nset.add(p.from);
+              nset.add(p.to);
+            }
+          });
+          nset.forEach((nid) => {
+            const n = networkState.nodes.find((n) => n.id === nid);
+            if (n) {
+              cx += n.x;
+              cy += n.y;
+              cnt++;
+            }
+          });
+          if (cnt > 0) {
+            loop.x = cx / cnt;
+            loop.y = cy / cnt;
+          }
+        });
+
+        // Supply links
+        networkState.nodes.forEach((node) => {
+          if (node.type === "pump" && node.connectedTank) {
+            const tank = networkState.nodes.find(
+              (n) => n.id === node.connectedTank
+            );
+            if (tank) {
+              ctx.beginPath();
+              ctx.moveTo(node.x, node.y);
+              ctx.lineTo(tank.x, tank.y);
+              ctx.lineWidth = 2;
+              ctx.strokeStyle = COLORS.teal;
+              ctx.setLineDash([6, 6]);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              const angle = Math.atan2(tank.y - node.y, tank.x - node.x);
+              drawArrowhead(
+                ctx,
+                tank.x - Math.cos(angle) * 25,
+                tank.y - Math.sin(angle) * 25,
+                angle,
+                COLORS.teal
+              );
+              ctx.fillStyle = COLORS.teal;
+              ctx.font = 'italic 12px "DM Sans"';
+              ctx.fillText(
+                "Qp,r",
+                (node.x + tank.x) / 2 + 10,
+                (node.y + tank.y) / 2 - 10
+              );
+            }
+          }
+        });
+
+        // Pipes
+        networkState.pipes.forEach((pipe) => {
+          const n1 = networkState.nodes.find((n) => n.id === pipe.from),
+            n2 = networkState.nodes.find((n) => n.id === pipe.to);
+          if (!n1 || !n2) return;
+          ctx.beginPath();
+          ctx.moveTo(n1.x, n1.y);
+          ctx.lineTo(n2.x, n2.y);
+          let sc = COLORS.navy;
+          if (selectedElement === pipe) sc = COLORS.teal;
+          else if (
+            networkState.activeMode === "loop" &&
+            currentLoopPipes.includes(pipe.id)
+          )
+            sc = COLORS.loop;
+          else if (
+            selectedElement?.directions !== undefined &&
+            selectedElement.pipeIds.includes(pipe.id)
+          )
+            sc = COLORS.loop;
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = sc;
+          ctx.stroke();
+          const angle = Math.atan2(n2.y - n1.y, n2.x - n1.x);
+          drawArrowhead(
+            ctx,
+            n2.x - Math.cos(angle) * 20,
+            n2.y - Math.sin(angle) * 20,
+            angle,
+            COLORS.navy
+          );
+          const mx = (n1.x + n2.x) / 2,
+            my = (n1.y + n2.y) / 2;
+          ctx.fillStyle = COLORS.muted;
+          ctx.font = '12px "DM Sans"';
+          ctx.fillText(pipe.id, mx + 5, my - 5);
+          if (networkState.activeMode === "loop") {
+            const seq = currentLoopPipes.indexOf(pipe.id);
+            if (seq !== -1) {
+              ctx.fillStyle = COLORS.loop;
+              ctx.fillText(`(${seq + 1})`, mx + 5, my + 15);
+            }
+          }
+        });
+
+        // Nodes
+        networkState.nodes.forEach((node) => {
+          ctx.save();
+          ctx.translate(node.x, node.y);
+          const isSel = selectedElement === node;
+          ctx.fillStyle = node.type === "pump" ? COLORS.teal : COLORS.navy;
+          ctx.strokeStyle = COLORS.teal;
+          ctx.lineWidth = isSel ? 3 : 0;
+          ctx.beginPath();
+          if (node.type === "junction") ctx.arc(0, 0, 18, 0, Math.PI * 2);
+          else if (node.type === "tank") ctx.roundRect(-20, -20, 40, 40, 8);
+          else if (node.type === "pump") {
+            ctx.moveTo(0, -20);
+            ctx.lineTo(20, 0);
+            ctx.lineTo(0, 20);
+            ctx.lineTo(-20, 0);
+            ctx.closePath();
+          }
+          ctx.fill();
+          if (isSel) ctx.stroke();
+          // Fixed-head indicator
+          if (node.fixedHead) {
+            ctx.strokeStyle = "#fbbf24";
+            ctx.lineWidth = 2;
+            if (node.type === "junction") {
+              ctx.beginPath();
+              ctx.arc(0, 0, 22, 0, Math.PI * 2);
+              ctx.stroke();
+            } else {
+              ctx.strokeRect(-24, -24, 48, 48);
+            }
+          }
+          ctx.fillStyle = COLORS.white;
+          ctx.font = 'bold 12px "DM Sans"';
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(node.id, 0, 0);
+          ctx.restore();
+        });
+
+        // Loops
+        networkState.loops.forEach((loop) => {
+          if (loop.x !== undefined && loop.y !== undefined)
+            drawLoopSymbol(
+              ctx,
+              loop.x,
+              loop.y,
+              loop.id,
+              selectedElement === loop
+            );
+        });
+
+        if (networkState.activeMode === "pipe" && pipeStartNode) {
+          ctx.beginPath();
+          ctx.arc(pipeStartNode.x, pipeStartNode.y, 22, 0, Math.PI * 2);
+          ctx.strokeStyle = COLORS.loop;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.restore();
+        requestAnimationFrame(drawLoop);
+      }
+      drawLoop();
+
+      /* =========================================
+   PROPERTIES PANEL (UPDATED for Phase 1B)
+   ========================================= */
+      function getDiameterOptions(currentDiam) {
+        const cat = networkState.settings.pipeCatalog;
+        let opts = cat
+          .map(
+            (c) =>
+              `<option value="${c.d}" ${
+                c.d === currentDiam ? "selected" : ""
+              }>${c.d} mm</option>`
+          )
+          .join("");
+        // Add custom option if current value not in catalog
+        if (!cat.some((c) => c.d === currentDiam)) {
+          opts =
+            `<option value="${currentDiam}" selected>${currentDiam} mm (custom)</option>` +
+            opts;
+        }
+        return opts;
+      }
+
+      function updatePropertiesPanel() {
+        if (!selectedElement) {
+          propertiesPanel.innerHTML =
+            '<div style="color:var(--muted);text-align:center;margin-top:2rem;">Click an element to edit</div>';
+          return;
+        }
+        let html = "";
+
+        if (selectedElement.directions !== undefined) {
+          // Loop
+          html = `<h3>Loop Properties</h3>
+            <label>Loop ID: <input type="text" data-key="id" value="${
+              selectedElement.id
+            }"></label>
+            <label style="margin-top:.5rem">Pipes:</label>
+            <ul style="margin:0;padding-left:1.5rem;color:var(--muted);font-size:.85rem;">${selectedElement.pipeIds
+              .map((pid) => `<li>${pid}</li>`)
+              .join("")}</ul>
+            <p style="font-size:.8rem;color:var(--muted)">Delete loop to redraw.</p>
+            <button class="danger-btn" id="btn-delete-element">Delete Loop</button>`;
+        } else if (selectedElement.from !== undefined) {
+          // Pipe
+          html = `<h3>Pipe Properties</h3>
+            <label>Link ID: <input type="text" data-key="id" value="${
+              selectedElement.id
+            }"></label>
+            <label>US Node: <input type="text" value="${
+              selectedElement.from
+            }" disabled></label>
+            <label>DS Node: <input type="text" value="${
+              selectedElement.to
+            }" disabled></label>
+            <button id="btn-reverse-pipe" style="margin:.5rem 0;padding:.3rem;">↔ Reverse Direction</button>
+            <label>Length (m): <input type="number" data-key="length" value="${
+              selectedElement.length
+            }"></label>
+            <label>Diameter (mm):
+                <select data-key="diameter">${getDiameterOptions(
+                  selectedElement.diameter
+                )}</select>
+            </label>
+            <label>Friction Model:
+                <select data-key="frictionModel">
+                    <option value="D-W" ${
+                      selectedElement.frictionModel === "D-W" ||
+                      selectedElement.frictionModel === "DW"
+                        ? "selected"
+                        : ""
+                    }>Darcy-Weisbach (D-W)</option>
+                    <option value="H-W" ${
+                      selectedElement.frictionModel === "H-W" ||
+                      selectedElement.frictionModel === "HW"
+                        ? "selected"
+                        : ""
+                    }>Hazen-Williams (H-W)</option>
+                </select>
+            </label>
+            ${
+              selectedElement.frictionModel === "D-W" ||
+              selectedElement.frictionModel === "DW"
+                ? `<label>Roughness ε (mm): <input type="number" data-key="roughness" value="${
+                    selectedElement.roughness ?? 0.26
+                  }" step="0.01"></label>`
+                : `<label>H-W Coeff C: <input type="number" data-key="hwCoeff" value="${
+                    selectedElement.hwCoeff ?? 130
+                  }"></label>`
+            }
+            <button class="danger-btn" id="btn-delete-element">Delete Pipe</button>`;
+        } else {
+          // Nodes
+          const type = selectedElement.type;
+          const modeKey = normalizeAnalysisMode(networkState.analysisMode);
+          html = `<h3>${
+            type.charAt(0).toUpperCase() + type.slice(1)
+          } Properties</h3>
+            <label>Node ID: <input type="text" data-key="id" value="${
+              selectedElement.id
+            }"></label>
+            <label>Elevation (m): <input type="number" data-key="elevation" value="${
+              selectedElement.elevation || 0
+            }"></label>`;
+
+          if (type === "junction") {
+            html += `<label>Demand (L/s): <input type="number" data-key="demand" value="${
+              selectedElement.demand || 0
+            }" step="0.1" title="Positive = withdrawal, Negative = supply"></label>
+            <div class="prop-section-title">Boundary Condition</div>
+            <label class="checkbox-label">
+                <input type="checkbox" data-key="fixedHead" ${
+                  selectedElement.fixedHead ? "checked" : ""
+                }>
+                Fixed Head Node (Z=1)
+            </label>
+            ${
+              selectedElement.fixedHead
+                ? `<label>Pressure Head AA (m): <input type="number" data-key="pressureHead" value="${
+                    selectedElement.pressureHead ?? 0
+                  }" step="0.5" title="Fixed piezometric head above node elevation"></label>`
+                : '<p style="font-size:.8rem;color:var(--muted);margin:0">Pressure will be solved by GRG Solver.</p>'
+            }
+            <p style="font-size:.78rem;color:var(--muted);margin:.15rem 0 0 0">' + (modeKey==='dom' ? 'Use fixed-head junctions only when the DOM benchmark explicitly requires them.' : 'For WFP/HSP, mark only the true fixed-head boundary nodes.') + '</p>`;
+          } else if (type === "tank") {
+            html += `<label>Demand (L/s): <input type="number" data-key="demand" value="${
+              selectedElement.demand || 0
+            }" step="0.1" title="Negative = supply to network"></label>
+            <div class="prop-section-title">Tank Geometry</div>
+            <div class="prop-row">
+                <label>Head hr (m): <input type="number" data-key="hr" value="${
+                  selectedElement.hr || 0
+                }" step="0.5" title="Reservoir head above elevation"></label>
+                <label>Tower hb (m): <input type="number" data-key="hb" value="${
+                  selectedElement.hb || 0
+                }" step="0.5" title="Tower height above ground (col T)"></label>
+            </div>
+            <label class="checkbox-label" style="margin-top:.25rem;">
+                <input type="checkbox" data-key="fixedHead" ${
+                  selectedElement.fixedHead !== false ? "checked" : ""
+                }>
+                Fixed Head (auto for tanks)
+            </label>
+            <div class="prop-section-title">Pump Parameters</div>
+            ${(() => {
+              const hasHours =
+                selectedElement.pumpHours != null &&
+                selectedElement.pumpHours !== "";
+              const hasEff =
+                selectedElement.pumpEfficiency != null &&
+                selectedElement.pumpEfficiency !== "";
+              const hasKp =
+                selectedElement.pumpKp != null &&
+                selectedElement.pumpKp !== "" &&
+                parseFloat(selectedElement.pumpKp) > 0;
+              const allSet = hasHours && hasEff && hasKp;
+              const banner = allSet
+                ? `<div style="background:var(--teal-bg);border:1px solid var(--teal);border-radius:6px;padding:.6rem;margin-bottom:.5rem;font-size:.82rem;">✅ Pump data is complete.</div>`
+                : `<div style="background:#fef3c7;border:1px solid var(--warn);border-radius:6px;padding:.6rem;margin-bottom:.5rem;font-size:.82rem;">⚠️ <strong>Pump data incomplete.</strong> Fill in hours/day, efficiency, and Kp so the workbook can compute pumping energy costs correctly.</div>`;
+              return banner;
+            })()}
+            <div class="prop-row">
+                <label>Hours/day: <input type="number" data-key="pumpHours" value="${
+                  selectedElement.pumpHours ?? ""
+                }" min="0" max="24" placeholder="e.g. 12"></label>
+                <label>Efficiency: <input type="number" data-key="pumpEfficiency" value="${
+                  selectedElement.pumpEfficiency ?? ""
+                }" step="0.05" min="0" max="1" placeholder="e.g. 0.85"></label>
+            </div>
+            <label>Loss Coeff: <input type="number" data-key="pumpKp" value="${
+              selectedElement.pumpKp ?? ""
+            }" step="0.1" placeholder="Friction coeff for pump pipe (m⁻⁰·⁸⁵ or similar)"></label>
+            <p style="font-size:.78rem;color:var(--muted);margin:.25rem 0 0 0">K<sub>p</sub> = 10.67 / (C¹·⁸⁵ · D⁴·⁸⁷) for H-W or 8fL/(D⁵π²g) for D-W on the pump supply pipe. See Table S2 in the paper.</p>
+            <p style="font-size:.78rem;color:var(--muted);margin:.1rem 0 0 0">${
+              modeKey === "dom"
+                ? "In DOM, hr and hb are starting values for Solver. Keep workbook-specific pressure links intact."
+                : "In WFP/HSP, hr is the known fixed boundary head. Set hb only when the benchmark includes tank height."
+            }</p>`;
+          } else if (type === "pump") {
+            // Legacy pump nodes (from older saved JSON). Guide user to migrate.
+            const tanks = networkState.nodes.filter((n) => n.type === "tank");
+            const tankOpts = tanks
+              .map(
+                (t) =>
+                  `<option value="${t.id}" ${
+                    selectedElement.connectedTank === t.id ? "selected" : ""
+                  }>${t.id}</option>`
+              )
+              .join("");
+            const isConnected = !!selectedElement.connectedTank;
+            html += `
+            <div style="background:#fef3c7;border:1px solid var(--warn);border-radius:6px;padding:.75rem;margin-bottom:.5rem;font-size:.83rem;">
+                ⚠️ <strong>Legacy pump node detected.</strong><br>
+                Pump parameters are now edited directly on the Tank/Reservoir node. 
+                To migrate: select the connected tank, copy these Kp / hours / efficiency values there, then delete this pump node.
+            </div>
+            <label>Connected Tank:
+                <select data-key="connectedTank"><option value="">-- Select Tank --</option>${tankOpts}</select>
+            </label>
+            <div class="prop-section-title">Pump Parameters (read — migrate to tank)</div>
+            <div class="prop-row">
+                <label>Hours/day: <input type="number" data-key="pumpHours" value="${
+                  selectedElement.pumpHours ?? ""
+                }" min="0" max="24"></label>
+                <label>Efficiency: <input type="number" data-key="pumpEfficiency" value="${
+                  selectedElement.pumpEfficiency ?? ""
+                }" step="0.05" min="0" max="1"></label>
+            </div>
+            <label>Loss Coeff: <input type="number" data-key="pumpKp" value="${
+              selectedElement.pumpKp ?? ""
+            }" step="0.1"></label>
+            <p style="font-size:.78rem;color:var(--muted);margin:.4rem 0 0 0">On export, these values are still merged into the connected tank row (columns E, F, J) for backward compatibility.</p>`;
+          }
+          html += `<button class="danger-btn" id="btn-delete-element">Delete ${
+            type.charAt(0).toUpperCase() + type.slice(1)
+          }</button>`;
+        }
+
+        propertiesPanel.innerHTML = html;
+
+        propertiesPanel
+          .querySelectorAll("input:not([disabled]),select")
+          .forEach((input) => {
+            input.addEventListener("change", (e) => {
+              const key = e.target.getAttribute("data-key");
+              let val;
+              if (e.target.type === "checkbox") val = e.target.checked;
+              else if (e.target.type === "number")
+                val = parseLocaleNumber(e.target.value, 0);
+              else val = e.target.value.trim();
+
+              if (key === "id") {
+                if (!val || val === selectedElement.id) return;
+                const isLoop = selectedElement.directions !== undefined,
+                  isPipe = selectedElement.from !== undefined;
+                let dup = isLoop
+                  ? networkState.loops.some((l) => l.id === val)
+                  : isPipe
+                  ? networkState.pipes.some((p) => p.id === val)
+                  : networkState.nodes.some((n) => n.id === val);
+                if (dup) {
+                  alert("ID already in use.");
+                  e.target.value = selectedElement.id;
+                  return;
+                }
+                if (!isPipe && !isLoop) {
+                  const old = selectedElement.id;
+                  networkState.pipes.forEach((p) => {
+                    if (p.from === old) p.from = val;
+                    if (p.to === old) p.to = val;
+                  });
+                  networkState.nodes
+                    .filter((n) => n.connectedTank === old)
+                    .forEach((n) => (n.connectedTank = val));
+                } else if (isPipe) {
+                  const old = selectedElement.id;
+                  networkState.loops.forEach((l) => {
+                    const idx = l.pipeIds.indexOf(old);
+                    if (idx !== -1) l.pipeIds[idx] = val;
+                  });
+                }
+                selectedElement.id = val;
+                triggerDataUpdate();
+                return;
+              }
+              selectedElement[key] = val;
+              if (key === "frictionModel" || key === "fixedHead")
+                updatePropertiesPanel();
+              triggerDataUpdate();
+            });
+          });
+
+        const revBtn = document.getElementById("btn-reverse-pipe");
+        if (revBtn)
+          revBtn.addEventListener("click", () => {
+            const t = selectedElement.from;
+            selectedElement.from = selectedElement.to;
+            selectedElement.to = t;
+            triggerDataUpdate();
+          });
+
+        const delBtn = document.getElementById("btn-delete-element");
+        if (delBtn)
+          delBtn.addEventListener("click", () => {
+            if (selectedElement.directions !== undefined)
+              networkState.loops = networkState.loops.filter(
+                (l) => l.id !== selectedElement.id
+              );
+            else if (selectedElement.from !== undefined) {
+              networkState.pipes = networkState.pipes.filter(
+                (p) => p.id !== selectedElement.id
+              );
+              networkState.loops = networkState.loops.filter(
+                (l) => !l.pipeIds.includes(selectedElement.id)
+              );
+            } else {
+              networkState.nodes = networkState.nodes.filter(
+                (n) => n.id !== selectedElement.id
+              );
+              networkState.pipes = networkState.pipes.filter((p) => {
+                if (
+                  p.from === selectedElement.id ||
+                  p.to === selectedElement.id
+                ) {
+                  networkState.loops = networkState.loops.filter(
+                    (l) => !l.pipeIds.includes(p.id)
+                  );
+                  return false;
+                }
+                return true;
+              });
+            }
+            selectedElement = null;
+            triggerDataUpdate();
+          });
+      }
+
+      /* =========================================
+   MATRICES & STATS
+   ========================================= */
+      function sortById(a, b) {
+        const numA = parseInt(a.id.replace(/\D/g, "")) || 0,
+          numB = parseInt(b.id.replace(/\D/g, "")) || 0;
+        return numA - numB;
+      }
+
+      function toFiniteNumber(value, fallback = 0) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : fallback;
+      }
+
+      function parseLocaleNumber(value, fallback = 0) {
+        if (typeof value === "number")
+          return Number.isFinite(value) ? value : fallback;
+        if (value == null) return fallback;
+
+        const raw = String(value).trim().replace(/\s+/g, "");
+        if (!raw) return fallback;
+
+        const lastComma = raw.lastIndexOf(",");
+        const lastDot = raw.lastIndexOf(".");
+        let normalized = raw;
+
+        if (lastComma !== -1 && lastDot !== -1) {
+          if (lastComma > lastDot) {
+            normalized = raw.replace(/\./g, "").replace(",", ".");
+          } else {
+            normalized = raw.replace(/,/g, "");
+          }
+        } else if (lastComma !== -1) {
+          normalized = raw.replace(",", ".");
+        }
+
+        const parsed = Number(normalized);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      function toCanonicalNumberString(value) {
+        const num = parseLocaleNumber(value, Number.NaN);
+        if (!Number.isFinite(num)) return "";
+        return num.toLocaleString("en-US", {
+          useGrouping: false,
+          maximumSignificantDigits: 15,
+        });
+      }
+
+      function normalizeFractionInput(value, fallback = 0) {
+        const num = parseLocaleNumber(value, fallback);
+        if (!Number.isFinite(num)) return fallback;
+        if (num > 1 && num <= 100) return num / 100;
+        return num;
+      }
+
+      function cloneDeep(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function sanitizePipeCatalog(pipeCatalog) {
+        return (pipeCatalog || []).map((item) => ({
+          d: parseLocaleNumber(item?.d, 0),
+          cost: parseLocaleNumber(item?.cost, 0),
+          epsilon: parseLocaleNumber(item?.epsilon, 0),
+          hw: parseLocaleNumber(item?.hw, 0),
+        }));
+      }
+
+      function sanitizeSettings(settings) {
+        const source = settings || {};
+        return {
+          frictionMethod:
+            source.frictionMethod || DEFAULT_SETTINGS.frictionMethod,
+          kinematicViscosity: parseLocaleNumber(
+            source.kinematicViscosity,
+            DEFAULT_SETTINGS.kinematicViscosity
+          ),
+          density: parseLocaleNumber(source.density, DEFAULT_SETTINGS.density),
+          energyCostPerKwh: parseLocaleNumber(
+            source.energyCostPerKwh,
+            DEFAULT_SETTINGS.energyCostPerKwh
+          ),
+          energyIncreaseRate: normalizeFractionInput(
+            source.energyIncreaseRate,
+            DEFAULT_SETTINGS.energyIncreaseRate
+          ),
+          systemLifespan: parseLocaleNumber(
+            source.systemLifespan,
+            DEFAULT_SETTINGS.systemLifespan
+          ),
+          interestRate: normalizeFractionInput(
+            source.interestRate,
+            DEFAULT_SETTINGS.interestRate
+          ),
+          operationalCostRate: normalizeFractionInput(
+            source.operationalCostRate,
+            DEFAULT_SETTINGS.operationalCostRate
+          ),
+          dayFactor: parseLocaleNumber(
+            source.dayFactor,
+            DEFAULT_SETTINGS.dayFactor
+          ),
+          hourFactor: parseLocaleNumber(
+            source.hourFactor,
+            DEFAULT_SETTINGS.hourFactor
+          ),
+          reservoirFillDays: parseLocaleNumber(
+            source.reservoirFillDays,
+            DEFAULT_SETTINGS.reservoirFillDays
+          ),
+          tankMaterialCost: parseLocaleNumber(
+            source.tankMaterialCost,
+            DEFAULT_SETTINGS.tankMaterialCost
+          ),
+          windSpeed: parseLocaleNumber(
+            source.windSpeed,
+            DEFAULT_SETTINGS.windSpeed
+          ),
+          windExponent: parseLocaleNumber(
+            source.windExponent,
+            DEFAULT_SETTINGS.windExponent
+          ),
+          pipeCatalog: sanitizePipeCatalog(
+            source.pipeCatalog?.length
+              ? source.pipeCatalog
+              : DEFAULT_SETTINGS.pipeCatalog
+          ),
+        };
+      }
+
+      function buildWorkbookModel() {
+        const settings = sanitizeSettings(networkState.settings);
+        const rawNodes = [...networkState.nodes].sort(sortById);
+        const rawPipes = [...networkState.pipes].sort(sortById);
+        const rawLoops = [...networkState.loops].sort(sortById);
+        const workbookNodes = rawNodes
+          .filter((node) => node.type !== "pump")
+          .map((node) => ({ ...cloneDeep(node), sourceId: String(node.id) }));
+        const pumpNodes = rawNodes
+          .filter((node) => node.type === "pump")
+          .map((node) => ({ ...cloneDeep(node), sourceId: String(node.id) }));
+        const nodeById = new Map(
+          workbookNodes.map((node) => [String(node.id), node])
+        );
+        const errors = [];
+        const warnings = [];
+        const normalizationNotes = [];
+
+        const duplicateNodeIds = workbookNodes.map((node) => String(node.id));
+        const duplicatePipeIds = rawPipes.map((pipe) => String(pipe.id));
+        const duplicateLoopIds = rawLoops.map((loop) => String(loop.id));
+        if (new Set(duplicateNodeIds).size !== duplicateNodeIds.length)
+          errors.push("Duplicate non-pump node IDs detected.");
+        if (new Set(duplicatePipeIds).size !== duplicatePipeIds.length)
+          errors.push("Duplicate pipe IDs detected.");
+        if (new Set(duplicateLoopIds).size !== duplicateLoopIds.length)
+          errors.push("Duplicate loop IDs detected.");
+
+        pumpNodes.forEach((pump) => {
+          if (!pump.connectedTank) {
+            // Legacy pump node with no tank — just warn, don't block export
+            warnings.push(
+              `Legacy pump node ${pump.id} has no connected tank and will be skipped.`
+            );
+            return;
+          }
+          const tank = nodeById.get(String(pump.connectedTank));
+          if (!tank) {
+            warnings.push(
+              `Legacy pump ${pump.id} references tank ${pump.connectedTank}, but that tank was not found.`
+            );
+            return;
+          }
+          if (tank.type !== "tank") {
+            warnings.push(
+              `Legacy pump ${pump.id} is linked to node ${pump.connectedTank}, which is not a tank/reservoir.`
+            );
+            return;
+          }
+          if (tank.mergedPumpId) {
+            errors.push(
+              `Tank ${tank.id} has more than one pump helper node. The workbook template supports one merged pump definition per tank.`
+            );
+            return;
+          }
+
+          tank.mergedPumpId = pump.id;
+          if (pump.pumpHours != null) tank.pumpHours = pump.pumpHours;
+          if (pump.pumpEfficiency != null)
+            tank.pumpEfficiency = pump.pumpEfficiency;
+          if (pump.pumpKp != null) tank.pumpKp = pump.pumpKp;
+          normalizationNotes.push(
+            `Pump helper ${pump.id} was merged into tank ${tank.id} for workbook import.`
+          );
+        });
+
+        workbookNodes.sort(sortById);
+        workbookNodes.forEach((node, index) => {
+          node.workbookIndex = index + 1;
+          node.workbookType =
+            node.type === "tank" ? "Reservoir or Tank" : "Manhole";
+          node.elevationValue = parseLocaleNumber(node.elevation, 0);
+          node.towerHeightValue = parseLocaleNumber(
+            node.hb ?? node.towerHeight,
+            0
+          );
+          node.fixedHeadValue =
+            node.type === "tank" || !!node.fixedHead ? 1 : 0;
+          node.pressureValue = node.fixedHeadValue
+            ? parseLocaleNumber(node.hr ?? node.pressureHead, 0)
+            : "";
+          node.pressureLinkedToSourceId = node.pressureLinkedToSourceId
+            ? String(node.pressureLinkedToSourceId)
+            : "";
+          node.pressureOffsetValue = node.pressureLinkedToSourceId
+            ? parseLocaleNumber(node.pressureOffset, 0)
+            : 0;
+          node.demandValue = parseLocaleNumber(node.demand, 0);
+          node.pumpHoursValue =
+            node.pumpHours == null || node.pumpHours === ""
+              ? ""
+              : parseLocaleNumber(node.pumpHours, 0);
+          node.pumpEfficiencyValue =
+            node.pumpEfficiency == null || node.pumpEfficiency === ""
+              ? ""
+              : normalizeFractionInput(node.pumpEfficiency, 0);
+          node.pumpKpValue =
+            node.pumpKp == null || node.pumpKp === ""
+              ? ""
+              : parseLocaleNumber(node.pumpKp, 0);
+        });
+
+        const nodeIndexById = new Map(
+          workbookNodes.map((node) => [String(node.id), node.workbookIndex])
+        );
+        const pipes = rawPipes.map((pipe, index) => {
+          const fromIndex = nodeIndexById.get(String(pipe.from));
+          const toIndex = nodeIndexById.get(String(pipe.to));
+          if (!fromIndex || !toIndex) {
+            errors.push(
+              `Pipe ${pipe.id} references ${
+                !fromIndex ? pipe.from : pipe.to
+              }, which is not a workbook-importable node.`
+            );
+          }
+          return {
+            ...cloneDeep(pipe),
+            workbookIndex: index + 1,
+            fromWorkbookIndex: fromIndex ?? "",
+            toWorkbookIndex: toIndex ?? "",
+            lengthValue: parseLocaleNumber(pipe.length, 100),
+            diameterValue: parseLocaleNumber(
+              pipe.diameter,
+              settings.pipeCatalog[4]?.d || 152.4
+            ),
+          };
+        });
+
+        rawLoops.forEach((loop) => {
+          if (
+            !Array.isArray(loop.pipeIds) ||
+            !Array.isArray(loop.directions) ||
+            loop.pipeIds.length !== loop.directions.length
+          ) {
+            errors.push(
+              `Loop ${loop.id} has inconsistent pipe/direction definitions.`
+            );
+          }
+          loop.pipeIds.forEach((pipeId) => {
+            if (!pipes.some((pipe) => pipe.id === pipeId))
+              errors.push(`Loop ${loop.id} references missing pipe ${pipeId}.`);
+          });
+        });
+
+        const fd = {
+          matrix: workbookNodes.map((node) =>
+            pipes.map((pipe) =>
+              pipe.from === node.id ? -1 : pipe.to === node.id ? 1 : 0
+            )
+          ),
+          rowLabels: workbookNodes.map((node) => node.workbookIndex),
+          colLabels: pipes.map((pipe) => pipe.workbookIndex),
+          rowSourceIds: workbookNodes.map((node) => node.id),
+          colSourceIds: pipes.map((pipe) => pipe.id),
+        };
+
+        const fl = {
+          matrix: rawLoops.map((loop) =>
+            pipes.map((pipe) => {
+              const idx = loop.pipeIds.indexOf(pipe.id);
+              return idx !== -1 ? loop.directions[idx] : 0;
+            })
+          ),
+          rowLabels: rawLoops.map((loop, index) => index + 1),
+          colLabels: pipes.map((pipe) => pipe.workbookIndex),
+          rowSourceIds: rawLoops.map((loop) => loop.id),
+          colSourceIds: pipes.map((pipe) => pipe.id),
+        };
+
+        if (!workbookNodes.length)
+          errors.push("No workbook-importable nodes found.");
+        if (!pipes.length) errors.push("No pipes found.");
+        if (!rawLoops.length)
+          warnings.push(
+            "No loops defined. The Energy Balance matrix will be empty."
+          );
+        workbookNodes
+          .filter((node) => node.type === "junction")
+          .forEach((node) => {
+            if (!node.elevationValue)
+              warnings.push(
+                `Node ${node.id}: elevation is 0. Verify this is correct.`
+              );
+          });
+        workbookNodes.forEach((node) => {
+          if (
+            node.pressureLinkedToSourceId &&
+            !workbookNodes.some(
+              (candidate) =>
+                String(candidate.sourceId) === node.pressureLinkedToSourceId
+            )
+          ) {
+            errors.push(
+              `Node ${node.id} references linked pressure source ${node.pressureLinkedToSourceId}, but that source node was not found.`
+            );
+          }
+        });
+        if (!workbookNodes.some((node) => node.fixedHeadValue === 1)) {
+          warnings.push(
+            "No fixed-head nodes found. At least one tank or fixed-head junction is required as a boundary condition."
+          );
+        }
+        // Warn about tanks with incomplete pump data
+        workbookNodes
+          .filter((n) => n.type === "tank")
+          .forEach((tank) => {
+            const hasHours =
+              tank.pumpHoursValue !== "" && tank.pumpHoursValue != null;
+            const hasEff =
+              tank.pumpEfficiencyValue !== "" &&
+              tank.pumpEfficiencyValue != null;
+            const hasKp =
+              tank.pumpKpValue !== "" &&
+              tank.pumpKpValue != null &&
+              parseLocaleNumber(tank.pumpKpValue, 0) > 0;
+            if (!hasHours || !hasEff || !hasKp) {
+              warnings.push(
+                `Tank ${tank.id}: pump data is incomplete (hours/day, efficiency, or Kp missing). Pumping energy costs will not be computed correctly in the workbook.`
+              );
+            }
+          });
+
+        return {
+          settings,
+          rawNodes,
+          pumpNodes,
+          workbookNodes,
+          pipes,
+          loops: rawLoops.map((loop, index) => ({
+            ...cloneDeep(loop),
+            workbookIndex: index + 1,
+          })),
+          fd,
+          fl,
+          normalizationNotes,
+          errors,
+          warnings,
+        };
+      }
+
+      function renderMatrixTable(cid, data, title) {
+        const el = document.getElementById(cid);
+        if (!data.matrix.length || !data.colLabels.length) {
+          el.innerHTML = `<p style="color:var(--muted)">Awaiting data for ${title}.</p>`;
+          return;
+        }
+        let h = `<h4 style="margin-top:0">${title}</h4><table class="matrix-table"><tr><th></th>`;
+        data.colLabels.forEach((c) => (h += `<th>${c}</th>`));
+        h += `</tr>`;
+        data.matrix.forEach((row, i) => {
+          h += `<tr><th>${data.rowLabels[i]}</th>`;
+          row.forEach(
+            (v) =>
+              (h += `<td class="${
+                v === 1 ? "matrix-pos" : v === -1 ? "matrix-neg" : ""
+              }">${v}</td>`)
+          );
+          h += `</tr>`;
+        });
+        el.innerHTML = h + `</table>`;
+      }
+
+      function updateMatrices() {
+        const workbookModel = buildWorkbookModel();
+        renderMatrixTable("fd-preview", workbookModel.fd, "Mass Balance (Fd)");
+        renderMatrixTable(
+          "fl-preview",
+          workbookModel.fl,
+          "Energy Balance (Fl)"
+        );
+        const tanksWithPumps = workbookModel.workbookNodes.filter(
+          (n) =>
+            n.type === "tank" &&
+            n.pumpHoursValue !== "" &&
+            n.pumpEfficiencyValue !== "" &&
+            n.pumpKpValue !== ""
+        ).length;
+        const totalTanks = workbookModel.workbookNodes.filter(
+          (n) => n.type === "tank"
+        ).length;
+        document.getElementById(
+          "network-stats"
+        ).textContent = `Hydraulic Nodes: ${workbookModel.workbookNodes.length} | Tanks: ${totalTanks} (${tanksWithPumps} with pump data) | Pipes: ${workbookModel.pipes.length} | Loops: ${workbookModel.loops.length} | Fd: ${workbookModel.fd.matrix.length}×${workbookModel.fd.colLabels.length} | Fl: ${workbookModel.fl.matrix.length}×${workbookModel.fl.colLabels.length}`;
+      }
+
+      document
+        .getElementById("toggle-matrix-preview")
+        .addEventListener("click", (e) => {
+          const c = document.getElementById("matrix-preview-content");
+          c.classList.toggle("hidden");
+          e.target.textContent = c.classList.contains("hidden")
+            ? "Matrix Preview ▲"
+            : "Matrix Preview ▼";
+        });
+
+      /* =========================================
+   SETTINGS MODAL
+   ========================================= */
+      function renderCatalogTable(catalog) {
+        const tbody = document.getElementById("catalog-tbody");
+        tbody.innerHTML = catalog
+          .map(
+            (r, i) => `
+        <tr>
+            <td><input type="number" data-idx="${i}" data-col="d" value="${r.d}" step="0.1"></td>
+            <td><input type="number" data-idx="${i}" data-col="cost" value="${r.cost}"></td>
+            <td><input type="number" data-idx="${i}" data-col="epsilon" value="${r.epsilon}" step="0.01"></td>
+            <td><input type="number" data-idx="${i}" data-col="hw" value="${r.hw}"></td>
+            <td style="text-align:center"><button onclick="removeCatalogRow(${i})" style="background:var(--error);color:white;border:none;border-radius:3px;padding:.15rem .4rem;cursor:pointer;">×</button></td>
+        </tr>`
+          )
+          .join("");
+      }
+
+      function removeCatalogRow(i) {
+        const catalog = getTempCatalog();
+        catalog.splice(i, 1);
+        renderCatalogTable(catalog);
+      }
+      window.removeCatalogRow = removeCatalogRow;
+
+      function getTempCatalog() {
+        const rows = document.querySelectorAll("#catalog-tbody tr");
+        return Array.from(rows).map((row) => {
+          return {
+            d: parseLocaleNumber(row.querySelector('[data-col="d"]').value, 0),
+            cost: parseLocaleNumber(
+              row.querySelector('[data-col="cost"]').value,
+              0
+            ),
+            epsilon: parseLocaleNumber(
+              row.querySelector('[data-col="epsilon"]').value,
+              0
+            ),
+            hw: parseLocaleNumber(
+              row.querySelector('[data-col="hw"]').value,
+              0
+            ),
+          };
+        });
+      }
+
+      function openSettings() {
+        const s = networkState.settings;
+        document.getElementById("s-frictionMethod").value = s.frictionMethod;
+        document.getElementById("s-kinematicViscosity").value =
+          s.kinematicViscosity;
+        document.getElementById("s-density").value = s.density;
+        document.getElementById("s-energyCostPerKwh").value =
+          s.energyCostPerKwh;
+        document.getElementById("s-energyIncreaseRate").value =
+          s.energyIncreaseRate;
+        document.getElementById("s-systemLifespan").value = s.systemLifespan;
+        document.getElementById("s-interestRate").value = s.interestRate;
+        document.getElementById("s-operationalCostRate").value =
+          s.operationalCostRate;
+        document.getElementById("s-dayFactor").value = s.dayFactor;
+        document.getElementById("s-hourFactor").value = s.hourFactor;
+        document.getElementById("s-reservoirFillDays").value =
+          s.reservoirFillDays;
+        document.getElementById("s-tankMaterialCost").value =
+          s.tankMaterialCost;
+        document.getElementById("s-windSpeed").value = s.windSpeed;
+        document.getElementById("s-windExponent").value = s.windExponent;
+        renderCatalogTable(JSON.parse(JSON.stringify(s.pipeCatalog)));
+        document.getElementById("settings-overlay").classList.remove("hidden");
+      }
+
+      function closeSettings() {
+        document.getElementById("settings-overlay").classList.add("hidden");
+      }
+
+      function saveSettings() {
+        const s = networkState.settings;
+        s.frictionMethod = document.getElementById("s-frictionMethod").value;
+        s.kinematicViscosity = parseLocaleNumber(
+          document.getElementById("s-kinematicViscosity").value,
+          DEFAULT_SETTINGS.kinematicViscosity
+        );
+        s.density = parseLocaleNumber(
+          document.getElementById("s-density").value,
+          DEFAULT_SETTINGS.density
+        );
+        s.energyCostPerKwh = parseLocaleNumber(
+          document.getElementById("s-energyCostPerKwh").value,
+          DEFAULT_SETTINGS.energyCostPerKwh
+        );
+        s.energyIncreaseRate = normalizeFractionInput(
+          document.getElementById("s-energyIncreaseRate").value,
+          DEFAULT_SETTINGS.energyIncreaseRate
+        );
+        s.systemLifespan = parseLocaleNumber(
+          document.getElementById("s-systemLifespan").value,
+          DEFAULT_SETTINGS.systemLifespan
+        );
+        s.interestRate = normalizeFractionInput(
+          document.getElementById("s-interestRate").value,
+          DEFAULT_SETTINGS.interestRate
+        );
+        s.operationalCostRate = normalizeFractionInput(
+          document.getElementById("s-operationalCostRate").value,
+          DEFAULT_SETTINGS.operationalCostRate
+        );
+        s.dayFactor = parseLocaleNumber(
+          document.getElementById("s-dayFactor").value,
+          DEFAULT_SETTINGS.dayFactor
+        );
+        s.hourFactor = parseLocaleNumber(
+          document.getElementById("s-hourFactor").value,
+          DEFAULT_SETTINGS.hourFactor
+        );
+        s.reservoirFillDays = parseLocaleNumber(
+          document.getElementById("s-reservoirFillDays").value,
+          DEFAULT_SETTINGS.reservoirFillDays
+        );
+        s.tankMaterialCost = parseLocaleNumber(
+          document.getElementById("s-tankMaterialCost").value,
+          DEFAULT_SETTINGS.tankMaterialCost
+        );
+        s.windSpeed = parseLocaleNumber(
+          document.getElementById("s-windSpeed").value,
+          DEFAULT_SETTINGS.windSpeed
+        );
+        s.windExponent = parseLocaleNumber(
+          document.getElementById("s-windExponent").value,
+          DEFAULT_SETTINGS.windExponent
+        );
+        s.pipeCatalog = getTempCatalog();
+        closeSettings();
+        triggerDataUpdate();
+      }
+
+      document
+        .getElementById("btn-open-settings")
+        .addEventListener("click", openSettings);
+      document
+        .getElementById("btn-open-guide")
+        .addEventListener("click", openGuide);
+      document
+        .getElementById("guide-close-btn")
+        .addEventListener("click", closeGuide);
+      document
+        .getElementById("guide-close-footer-btn")
+        .addEventListener("click", closeGuide);
+      document
+        .getElementById("guide-overlay")
+        .addEventListener("click", (e) => {
+          if (e.target === document.getElementById("guide-overlay"))
+            closeGuide();
+        });
+      document
+        .getElementById("select-analysis-mode")
+        .addEventListener("change", (e) => {
+          networkState.analysisMode = normalizeAnalysisMode(e.target.value);
+          triggerDataUpdate();
+        });
+      document
+        .getElementById("settings-close-btn")
+        .addEventListener("click", closeSettings);
+      document
+        .getElementById("settings-cancel-btn")
+        .addEventListener("click", closeSettings);
+      document
+        .getElementById("settings-save-btn")
+        .addEventListener("click", saveSettings);
+      document
+        .getElementById("btn-add-catalog-row")
+        .addEventListener("click", () => {
+          const cat = getTempCatalog();
+          cat.push({ d: 100, cost: 15, epsilon: 0.26, hw: 130 });
+          renderCatalogTable(cat);
+        });
+      document
+        .getElementById("btn-reset-catalog")
+        .addEventListener("click", () =>
+          renderCatalogTable(
+            JSON.parse(JSON.stringify(DEFAULT_SETTINGS.pipeCatalog))
+          )
+        );
+      document
+        .getElementById("settings-overlay")
+        .addEventListener("click", (e) => {
+          if (e.target === document.getElementById("settings-overlay"))
+            closeSettings();
+        });
+
+      /* =========================================
+   SAVE / LOAD / CLEAR
+   ========================================= */
+      document.getElementById("btn-save").addEventListener("click", () => {
+        const a = document.createElement("a");
+        a.href =
+          "data:text/json;charset=utf-8," +
+          encodeURIComponent(JSON.stringify(networkState, null, 2));
+        a.download = `xwhat_network_${new Date()
+          .toISOString()
+          .slice(0, 10)}.json`;
+        a.click();
+      });
+
+      document.getElementById("btn-load").addEventListener("click", () => {
+        const inp = document.createElement("input");
+        inp.type = "file";
+        inp.accept = ".json";
+        inp.onchange = (e) => {
+          const reader = new FileReader();
+          reader.readAsText(e.target.files[0], "UTF-8");
+          reader.onload = (ev) => {
+            try {
+              const c = JSON.parse(ev.target.result);
+              Object.assign(networkState, c);
+              if (!networkState.settings)
+                networkState.settings = JSON.parse(
+                  JSON.stringify(DEFAULT_SETTINGS)
+                );
+              networkState.analysisMode = normalizeAnalysisMode(
+                networkState.analysisMode
+              );
+              if (!networkState.activeScenarioLabel) resetScenarioMetadata();
+              triggerDataUpdate();
+            } catch (err) {
+              alert("Invalid JSON file");
+            }
+          };
+        };
+        inp.click();
+      });
+
+      document.getElementById("btn-clear").addEventListener("click", () => {
+        if (confirm("Clear canvas?")) {
+          networkState.nodes = [];
+          networkState.pipes = [];
+          networkState.loops = [];
+          networkState.analysisMode = "wfp";
+          resetScenarioMetadata();
+          selectedElement = null;
+          triggerDataUpdate();
+        }
+      });
+
+      /* =========================================
+   XWHAT EXPORTER (Phase 1B)
+   ========================================= */
+      function colIdx(col) {
+        let n = 0;
+        for (const c of col) n = n * 26 + (c.charCodeAt(0) - 64);
+        return n - 1;
+      }
+
+      function setCell(ws, col, row1, value) {
+        const key = XLSX.utils.encode_cell({ r: row1 - 1, c: colIdx(col) });
+        if (typeof value === "number") ws[key] = { t: "n", v: value };
+        else if (value === null || value === undefined)
+          ws[key] = { t: "s", v: "" };
+        else ws[key] = { t: "s", v: String(value) };
+      }
+
+      function setCellF(ws, col, row1, formula) {
+        const key = XLSX.utils.encode_cell({ r: row1 - 1, c: colIdx(col) });
+        ws[key] = { t: "n", f: formula };
+      }
+
+      function buildLinkedPressureFormula(linkedRow, offsetValue) {
+        const numericOffset = parseLocaleNumber(offsetValue, 0);
+        const canonicalOffset =
+          toCanonicalNumberString(Math.abs(numericOffset)) || "0";
+        if (numericOffset > 0) return `AA${linkedRow}+${canonicalOffset}`;
+        if (numericOffset < 0) return `AA${linkedRow}-${canonicalOffset}`;
+        return `AA${linkedRow}`;
+      }
+
+      function buildMemorySheet(nodes, pipes, loops, settings) {
+        const ws = {};
+        const s = settings;
+
+        // ---- BLOCK A: Global Parameters ----
+        setCell(ws, "C", 4, s.frictionMethod);
+        setCell(ws, "C", 6, s.kinematicViscosity);
+        setCell(ws, "C", 8, s.density);
+        setCell(ws, "C", 10, pipes.length); // num_segments
+        setCell(ws, "C", 12, nodes.length); // num_nodes
+        setCell(ws, "C", 14, loops.length); // loops
+        setCell(ws, "C", 16, s.energyCostPerKwh);
+        setCell(ws, "C", 18, s.energyIncreaseRate);
+        setCell(ws, "C", 20, s.systemLifespan);
+        setCell(ws, "C", 22, s.interestRate);
+        setCell(ws, "C", 24, s.operationalCostRate);
+        setCell(ws, "C", 26, s.dayFactor);
+        setCell(ws, "C", 28, s.hourFactor);
+        setCell(ws, "C", 30, s.reservoirFillDays);
+        setCell(ws, "C", 32, s.tankMaterialCost);
+        setCell(ws, "C", 34, s.windSpeed);
+        setCell(ws, "C", 36, s.windExponent);
+
+        // Section labels
+        setCell(ws, "B", 3, "Parameter");
+        setCell(ws, "C", 3, "Value");
+        setCell(ws, "D", 3, "Units");
+        const paramLabels = [
+          [4, "Head Loss Method", "—"],
+          [6, "ν (Kinematic Viscosity)", "m²/s"],
+          [8, "ρ (Fluid Density)", "kg/m³"],
+          [10, "Nl (Number of Links)", "—"],
+          [12, "Nn (Number of Nodes)", "—"],
+          [14, "NL (Number of Loops)", "—"],
+          [16, "Pc (Energy Cost)", "USD/kWh"],
+          [18, "ir (Energy Increase Rate)", "—"],
+          [20, "n (System Lifespan)", "years"],
+          [22, "i (Interest Rate)", "—"],
+          [24, "α (Operational Cost Rate)", "—"],
+          [26, "k₁ (Day Factor)", "—"],
+          [28, "k₂ (Hour Factor)", "—"],
+          [30, "Dtr (Reservoir Fill)", "days"],
+          [32, "Cm (Tank Material Cost)", "USD/m²"],
+          [34, "Vk (Wind Speed)", "m/s"],
+          [36, "p (Wind Exponent)", "—"],
+        ];
+        paramLabels.forEach(([row, lbl, unit]) => {
+          setCell(ws, "B", row, lbl);
+          setCell(ws, "D", row, unit);
+        });
+
+        // ---- BLOCK B: Pipe Catalog ----
+        setCell(ws, "H", 4, "D [mm]");
+        setCell(ws, "I", 4, "Cost [USD/m]");
+        setCell(ws, "J", 4, "ε D-W [mm]");
+        setCell(ws, "K", 4, "C H-W");
+        s.pipeCatalog.forEach((pipe, i) => {
+          const row = 5 + i;
+          setCell(ws, "H", row, pipe.d);
+          setCell(ws, "I", row, pipe.cost);
+          setCell(ws, "J", row, pipe.epsilon);
+          setCell(ws, "K", row, pipe.hw);
+        });
+
+        // ---- HEADERS for Node/Link Tables ----
+        setCell(ws, "B", 48, "NODE TABLE");
+        setCell(ws, "AE", 48, "LINK TABLE");
+        const nodeHdrs = [
+          ["B", "Node #"],
+          ["C", "Elevation (m)"],
+          ["D", "Node Type"],
+          ["E", "np (h)"],
+          ["F", "ηp"],
+          ["J", "Kp"],
+          ["T", "hb (m)"],
+          ["Y", "Demand (L/s)"],
+          ["Z", "Fixed Head"],
+          ["AA", "Pressure (m)"],
+          ["AB", "Head (m)"],
+        ];
+        nodeHdrs.forEach(([c, lbl]) => setCell(ws, c, 49, lbl));
+        const linkHdrs = [
+          ["AE", "Link #"],
+          ["AF", "Upstream Node"],
+          ["AG", "Downstream Node"],
+          ["AH", "Name"],
+          ["AI", "q (L/s)"],
+          ["AJ", "L (m)"],
+          ["AK", "D (mm)"],
+        ];
+        linkHdrs.forEach(([c, lbl]) => setCell(ws, c, 49, lbl));
+
+        // ---- BLOCK C: Per-Node Data ----
+        nodes.forEach((node, i) => {
+          const row = 50 + i;
+          setCell(ws, "B", row, node.workbookIndex || i + 1);
+          setCell(ws, "C", row, node.elevationValue ?? 0);
+          setCell(
+            ws,
+            "D",
+            row,
+            node.workbookType ||
+              (node.type === "tank" ? "Reservoir or Tank" : "Manhole")
+          );
+          if (node.type === "tank")
+            setCell(ws, "T", row, node.towerHeightValue ?? 0);
+          setCell(ws, "Y", row, node.demandValue ?? 0);
+
+          const fh =
+            node.fixedHeadValue ??
+            (node.type === "tank" ? 1 : node.fixedHead ? 1 : 0);
+          setCell(ws, "Z", row, fh);
+
+          if (fh === 1) {
+            const linkedNode = node.pressureLinkedToSourceId
+              ? nodes.find(
+                  (candidate) =>
+                    String(candidate.sourceId || candidate.id) ===
+                    node.pressureLinkedToSourceId
+                )
+              : null;
+            if (linkedNode) {
+              setCellF(
+                ws,
+                "AA",
+                row,
+                buildLinkedPressureFormula(
+                  linkedNode.workbookIndex || linkedNode.id,
+                  node.pressureOffsetValue
+                )
+              );
+            } else {
+              const ph = node.pressureValue ?? 0;
+              setCell(ws, "AA", row, ph);
+            }
+          }
+
+          if (
+            node.pumpHoursValue !== "" ||
+            node.pumpEfficiencyValue !== "" ||
+            node.pumpKpValue !== ""
+          ) {
+            setCell(ws, "E", row, node.pumpHoursValue);
+            setCell(ws, "F", row, node.pumpEfficiencyValue);
+            setCell(ws, "J", row, node.pumpKpValue);
+          }
+
+          // Head formula (AB = C + AA + T)
+          setCellF(ws, "AB", row, `C${row}+AA${row}+T${row}`);
+        });
+
+        // ---- BLOCK D: Per-Link Data ----
+        pipes.forEach((pipe, i) => {
+          const row = 50 + i;
+          setCell(ws, "AE", row, pipe.workbookIndex || i + 1);
+          setCell(ws, "AF", row, pipe.fromWorkbookIndex);
+          setCell(ws, "AG", row, pipe.toWorkbookIndex);
+          setCell(ws, "AH", row, `t. ${pipe.from}-${pipe.to}`);
+          setCell(ws, "AI", row, 0.1); // initial guess for flow (solver variable)
+          setCell(ws, "AJ", row, pipe.lengthValue ?? 100);
+          setCell(ws, "AK", row, pipe.diameterValue ?? 100);
+        });
+
+        // Set worksheet range
+        const maxRow = 50 + Math.max(nodes.length, pipes.length) + 5;
+        ws["!ref"] = XLSX.utils.encode_range(
+          { r: 0, c: 0 },
+          { r: maxRow, c: 71 }
+        );
+        return ws;
+      }
+
+      function buildMassBalanceSheet(fd) {
+        const ws = {};
+        // Header row 7: link numbers (C7, D7, ...)
+        setCell(ws, "B", 7, "Node \\ Link");
+        fd.colLabels.forEach((lbl, j) => {
+          const key = XLSX.utils.encode_cell({ r: 6, c: 2 + j });
+          ws[key] = { t: "n", v: j + 1 };
+        });
+        // Row 8: Q labels
+        setCell(ws, "B", 8, "Node \\ Q");
+        fd.colLabels.forEach((lbl, j) => {
+          const key = XLSX.utils.encode_cell({ r: 7, c: 2 + j });
+          ws[key] = { t: "s", v: `Q${j + 1}` };
+        });
+        // Rows 9+: Fd matrix
+        fd.matrix.forEach((row, i) => {
+          const labelKey = XLSX.utils.encode_cell({ r: 8 + i, c: 1 });
+          ws[labelKey] = { t: "s", v: fd.rowLabels[i] };
+          row.forEach((val, j) => {
+            const key = XLSX.utils.encode_cell({ r: 8 + i, c: 2 + j });
+            ws[key] = { t: "n", v: val };
+          });
+        });
+        ws["!ref"] = XLSX.utils.encode_range(
+          { r: 0, c: 0 },
+          { r: 9 + fd.matrix.length, c: 2 + fd.colLabels.length + 1 }
+        );
+        return ws;
+      }
+
+      function buildEnergyBalanceSheet(fl) {
+        const ws = {};
+        // Row 4: link numbers (C4, D4, ...)
+        setCell(ws, "B", 4, "Loop \\ Link");
+        fl.colLabels.forEach((lbl, j) => {
+          const key = XLSX.utils.encode_cell({ r: 3, c: 2 + j });
+          ws[key] = { t: "n", v: j + 1 };
+        });
+        // Row 5: hf labels
+        setCell(ws, "B", 5, "Loop \\ hf");
+        fl.colLabels.forEach((lbl, j) => {
+          const key = XLSX.utils.encode_cell({ r: 4, c: 2 + j });
+          ws[key] = { t: "s", v: `hf${j + 1}` };
+        });
+        // Rows 6+: Fl matrix
+        fl.matrix.forEach((row, i) => {
+          const labelKey = XLSX.utils.encode_cell({ r: 5 + i, c: 1 });
+          ws[labelKey] = { t: "s", v: fl.rowLabels[i] };
+          row.forEach((val, j) => {
+            const key = XLSX.utils.encode_cell({ r: 5 + i, c: 2 + j });
+            ws[key] = { t: "n", v: val };
+          });
+        });
+        ws["!ref"] = XLSX.utils.encode_range(
+          { r: 0, c: 0 },
+          { r: 6 + fl.matrix.length, c: 2 + fl.colLabels.length + 1 }
+        );
+        return ws;
+      }
+
+      function buildInstructionsSheet(N, P, L) {
+        const rows = [
+          ["X-WHAT MODEL — SETUP GUIDE"],
+          [
+            `Generated by X-WHAT Network Canvas | ${new Date().toLocaleDateString()}`,
+          ],
+          [""],
+          [`YOUR NETWORK: N=${N} nodes | P=${P} pipes | L=${L} loops`],
+          [""],
+          ["PRE-FILLED CELLS:"],
+          [
+            "  ✅ Memory!C4:C40         Global parameters (friction, fluid, economics, structural)",
+          ],
+          [`  ✅ Memory!C50:AB${49 + N}   Node data (${N} nodes)`],
+          [
+            `  ✅ Memory!AE50:AK${
+              49 + P
+            }  Link topology and geometry (${P} pipes)`,
+          ],
+          ["  ✅ Mass_Balance!C7        Fd column headers"],
+          [
+            `  ✅ Mass_Balance!C9        Fd incidence matrix (${N} nodes × ${P} pipes)`,
+          ],
+          ["  ✅ Energy_Balance!C4      Fl column headers"],
+          [
+            `  ✅ Energy_Balance!C6      Fl incidence matrix (${L} loops × ${P} pipes)`,
+          ],
+          [""],
+          ["═══════════════════════════════════════════════════════"],
+          ["SOLVER SETUP  (Data → Solver → Solver Parameters)"],
+          ["═══════════════════════════════════════════════════════"],
+          [""],
+          ["FOR WFP (Water Flow Problem — find pipe flows):"],
+          ["  Set Objective:    [leave blank — feasibility only]"],
+          [
+            `  Changing Cells:   Memory!AI50:AI${
+              49 + P
+            }    ← pipe discharges q (L/s)`,
+          ],
+          [`  Constraints:      Memory!BE51:BE${50 + N} = 0  ← mass balance`],
+          [`                    Memory!BH51:BH${50 + L} = 0  ← energy balance`],
+          ["  Solving Method:   GRG Nonlinear"],
+          [""],
+          ["FOR DOM (Design Optimization Model ? audited workbook workflow):"],
+          ["  Set Objective:    Memory!BT51 (Minimize)"],
+          [
+            `  Changing Cells:   Memory!AI50:AI${
+              49 + P
+            }    ? pipe discharges q`,
+          ],
+          [
+            "                    Plus the audited reservoir/tank design cells in AA and T",
+          ],
+          [
+            "                    Example from the current workbook: AA63 and T62:T63",
+          ],
+          [
+            "                    Keep AA62 linked by formula to AA63 + 3.66 when using Case (c) DOM",
+          ],
+          [`  Constraints:      Memory!BE51:BE${50 + N} = 0  ? mass balance`],
+          [`                    Memory!BH51:BH${50 + L} = 0  ? energy balance`],
+          [
+            `                    Memory!BK51:BK${
+              50 + N
+            } >= 10  ? min pressure 10 mH?O`,
+          ],
+          [
+            `                    Memory!BK51:BK${
+              50 + N
+            } <= 30  ? max pressure 30 mH?O`,
+          ],
+          ["  Solving Method:   GRG Nonlinear"],
+          [""],
+          ["═══════════════════════════════════════════════════════"],
+          ["RESULT LOCATIONS (after solving)"],
+          ["═══════════════════════════════════════════════════════"],
+          [`  Pipe flows q:        Memory!AI50:AI${49 + P}`],
+          [`  Node pressures P/γ:  Memory!BK51:BK${50 + N}`],
+          ["  Total cost (DOM):    Memory!BT51"],
+          ["  Cost breakdown:      Memory!BN51:BS51"],
+          [""],
+          ["UPLOAD RESULTS TO WEBSITE:"],
+          ["  Save this file after solving, then go to:"],
+          [
+            "  [website URL]/results.html — upload for interactive visualization",
+          ],
+        ];
+        return XLSX.utils.aoa_to_sheet(rows);
+      }
+
+      /* =========================================
+   EXPORT BUTTON — VALIDATION + MODAL
+   ========================================= */
+      document.getElementById("btn-export").addEventListener("click", () => {
+        const workbookModel = buildWorkbookModel();
+        const N = workbookModel.workbookNodes.length,
+          P = workbookModel.pipes.length,
+          L = workbookModel.loops.length;
+        if (workbookModel.errors.length) {
+          alert(
+            `Export blocked:\n\n${workbookModel.errors
+              .map((err) => `- ${err}`)
+              .join("\n")}`
+          );
+          return;
+        }
+
+        const summaryEl = document.getElementById("export-summary-text");
+        const tanksWithPumpsExport = workbookModel.workbookNodes.filter(
+          (n) =>
+            n.type === "tank" &&
+            n.pumpHoursValue !== "" &&
+            n.pumpEfficiencyValue !== "" &&
+            n.pumpKpValue !== ""
+        ).length;
+        const totalTanksExport = workbookModel.workbookNodes.filter(
+          (n) => n.type === "tank"
+        ).length;
+        summaryEl.innerHTML = `
+        <strong>Network Summary</strong><br>
+        Hydraulic Nodes: <b>${N}</b> | Tanks: <b>${totalTanksExport}</b> (${tanksWithPumpsExport}/${totalTanksExport} with pump data) | Pipes: <b>${P}</b> | Loops: <b>${L}</b><br>
+        Method: <b>${networkState.settings.frictionMethod}</b> | Lifespan: <b>${networkState.settings.systemLifespan} yr</b><br>
+        Pipe catalog: <b>${networkState.settings.pipeCatalog.length}</b> diameters<br><br>
+        <strong>Recommended export:</strong><br>
+        ✅ <code>.xwhat.xml</code> — versioned package for the workbook import macro<br><br>
+        <strong>Compatibility export:</strong><br>
+        ✅ Legacy <code>.xlsx</code> — pre-filled workbook clone with Instructions sheet
+    `;
+
+        const wBox = document.getElementById("export-warnings-box");
+        const wList = document.getElementById("export-warnings-list");
+        const warnings = [...workbookModel.warnings];
+        workbookModel.normalizationNotes.forEach((note) => warnings.push(note));
+        if (warnings.length) {
+          wList.innerHTML = warnings.map((w) => `<li>${w}</li>`).join("");
+          wBox.classList.remove("hidden");
+        } else {
+          wBox.classList.add("hidden");
+        }
+
+        document.getElementById("export-overlay").classList.remove("hidden");
+      });
+
+      document
+        .getElementById("export-close-btn")
+        .addEventListener("click", () =>
+          document.getElementById("export-overlay").classList.add("hidden")
+        );
+      document
+        .getElementById("export-cancel-btn")
+        .addEventListener("click", () =>
+          document.getElementById("export-overlay").classList.add("hidden")
+        );
+
+      document
+        .getElementById("export-confirm-btn")
+        .addEventListener("click", () => {
+          document.getElementById("export-overlay").classList.add("hidden");
+          runPackageExport();
+        });
+
+      document
+        .getElementById("export-legacy-btn")
+        .addEventListener("click", () => {
+          document.getElementById("export-overlay").classList.add("hidden");
+          runLegacyWorkbookExport();
+        });
+
+      function escapeXml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+      }
+
+      function formatXmlValue(value) {
+        if (value === "" || value == null) return "";
+        const canonical = toCanonicalNumberString(value);
+        if (canonical !== "") return canonical;
+        return String(value);
+      }
+
+      function buildNetworkPackageXml(workbookModel) {
+        const lines = [
+          '<?xml version="1.0" encoding="UTF-8"?>',
+          `<xwhatNetworkPackage specVersion="1.0" exporter="X-WHAT Network Canvas" exportedAt="${escapeXml(
+            new Date().toISOString()
+          )}">`,
+          `  <summary rawCanvasNodes="${workbookModel.rawNodes.length}" workbookNodes="${workbookModel.workbookNodes.length}" pipes="${workbookModel.pipes.length}" loops="${workbookModel.loops.length}" />`,
+          `  <normalization>`,
+        ];
+
+        if (workbookModel.normalizationNotes.length) {
+          workbookModel.normalizationNotes.forEach((note) =>
+            lines.push(`    <note>${escapeXml(note)}</note>`)
+          );
+        } else {
+          lines.push(
+            "    <note>No normalization beyond pump exclusion was required.</note>"
+          );
+        }
+        lines.push("  </normalization>");
+        lines.push(
+          '  <workbookImportModel targetWorkbook="X-WHAT_Model_V1.xlsm" targetSheets="Memory,Mass_Balance,Energy_Balance">'
+        );
+        lines.push(
+          `    <settings frictionMethod="${escapeXml(
+            workbookModel.settings.frictionMethod
+          )}" kinematicViscosity="${escapeXml(
+            formatXmlValue(workbookModel.settings.kinematicViscosity)
+          )}" density="${escapeXml(
+            formatXmlValue(workbookModel.settings.density)
+          )}" energyCostPerKwh="${escapeXml(
+            formatXmlValue(workbookModel.settings.energyCostPerKwh)
+          )}" energyIncreaseRate="${escapeXml(
+            formatXmlValue(workbookModel.settings.energyIncreaseRate)
+          )}" systemLifespan="${escapeXml(
+            formatXmlValue(workbookModel.settings.systemLifespan)
+          )}" interestRate="${escapeXml(
+            formatXmlValue(workbookModel.settings.interestRate)
+          )}" operationalCostRate="${escapeXml(
+            formatXmlValue(workbookModel.settings.operationalCostRate)
+          )}" dayFactor="${escapeXml(
+            formatXmlValue(workbookModel.settings.dayFactor)
+          )}" hourFactor="${escapeXml(
+            formatXmlValue(workbookModel.settings.hourFactor)
+          )}" reservoirFillDays="${escapeXml(
+            formatXmlValue(workbookModel.settings.reservoirFillDays)
+          )}" tankMaterialCost="${escapeXml(
+            formatXmlValue(workbookModel.settings.tankMaterialCost)
+          )}" windSpeed="${escapeXml(
+            formatXmlValue(workbookModel.settings.windSpeed)
+          )}" windExponent="${escapeXml(
+            formatXmlValue(workbookModel.settings.windExponent)
+          )}" />`
+        );
+        lines.push("    <pipeCatalog>");
+        workbookModel.settings.pipeCatalog.forEach((item, index) => {
+          lines.push(
+            `      <pipe sizeIndex="${index + 1}" diameterMm="${escapeXml(
+              formatXmlValue(item.d)
+            )}" costUsdPerM="${escapeXml(
+              formatXmlValue(item.cost)
+            )}" roughnessMm="${escapeXml(
+              formatXmlValue(item.epsilon)
+            )}" hazenWilliamsC="${escapeXml(formatXmlValue(item.hw))}" />`
+          );
+        });
+        lines.push("    </pipeCatalog>");
+        lines.push("    <nodes>");
+        workbookModel.workbookNodes.forEach((node) => {
+          lines.push(
+            `      <node order="${node.workbookIndex}" sourceId="${escapeXml(
+              node.sourceId
+            )}" workbookType="${escapeXml(
+              node.workbookType
+            )}" elevation="${escapeXml(
+              formatXmlValue(node.elevationValue)
+            )}" demand="${escapeXml(
+              formatXmlValue(node.demandValue)
+            )}" fixedHead="${node.fixedHeadValue}" pressure="${escapeXml(
+              formatXmlValue(node.pressureValue)
+            )}" pressureLinkedToSourceId="${escapeXml(
+              node.pressureLinkedToSourceId || ""
+            )}" pressureOffset="${escapeXml(
+              formatXmlValue(node.pressureOffsetValue || 0)
+            )}" towerHeight="${escapeXml(
+              formatXmlValue(node.towerHeightValue)
+            )}" pumpHours="${escapeXml(
+              formatXmlValue(node.pumpHoursValue)
+            )}" pumpEfficiency="${escapeXml(
+              formatXmlValue(node.pumpEfficiencyValue)
+            )}" pumpKp="${escapeXml(
+              formatXmlValue(node.pumpKpValue)
+            )}" canvasType="${escapeXml(node.type)}" x="${escapeXml(
+              formatXmlValue(toFiniteNumber(node.x, 0))
+            )}" y="${escapeXml(
+              formatXmlValue(toFiniteNumber(node.y, 0))
+            )}" mergedPumpId="${escapeXml(node.mergedPumpId || "")}" />`
+          );
+        });
+        lines.push("    </nodes>");
+        lines.push("    <pipes>");
+        workbookModel.pipes.forEach((pipe) => {
+          lines.push(
+            `      <pipe order="${pipe.workbookIndex}" sourceId="${escapeXml(
+              pipe.id
+            )}" fromSourceId="${escapeXml(pipe.from)}" toSourceId="${escapeXml(
+              pipe.to
+            )}" fromOrder="${escapeXml(
+              formatXmlValue(pipe.fromWorkbookIndex)
+            )}" toOrder="${escapeXml(
+              formatXmlValue(pipe.toWorkbookIndex)
+            )}" length="${escapeXml(
+              formatXmlValue(pipe.lengthValue)
+            )}" diameter="${escapeXml(formatXmlValue(pipe.diameterValue))}" />`
+          );
+        });
+        lines.push("    </pipes>");
+        lines.push("    <loops>");
+        workbookModel.loops.forEach((loop) => {
+          lines.push(
+            `      <loop order="${loop.workbookIndex}" sourceId="${escapeXml(
+              loop.id
+            )}">`
+          );
+          loop.pipeIds.forEach((pipeId, idx) => {
+            lines.push(
+              `        <segment pipeSourceId="${escapeXml(
+                pipeId
+              )}" direction="${escapeXml(
+                formatXmlValue(loop.directions[idx] ?? 0)
+              )}" />`
+            );
+          });
+          lines.push("      </loop>");
+        });
+        lines.push("    </loops>");
+        lines.push(
+          `    <fdMatrix rows="${workbookModel.fd.matrix.length}" cols="${workbookModel.fd.colLabels.length}">`
+        );
+        workbookModel.fd.matrix.forEach((row, index) => {
+          lines.push(
+            `      <row order="${
+              workbookModel.fd.rowLabels[index]
+            }" sourceId="${escapeXml(
+              workbookModel.fd.rowSourceIds[index]
+            )}">${row.join(",")}</row>`
+          );
+        });
+        lines.push("    </fdMatrix>");
+        lines.push(
+          `    <flMatrix rows="${workbookModel.fl.matrix.length}" cols="${workbookModel.fl.colLabels.length}">`
+        );
+        workbookModel.fl.matrix.forEach((row, index) => {
+          lines.push(
+            `      <row order="${
+              workbookModel.fl.rowLabels[index]
+            }" sourceId="${escapeXml(
+              workbookModel.fl.rowSourceIds[index]
+            )}">${row.join(",")}</row>`
+          );
+        });
+        lines.push("    </flMatrix>");
+        lines.push("  </workbookImportModel>");
+        lines.push("</xwhatNetworkPackage>");
+        return lines.join("\n");
+      }
+
+      function downloadTextFile(filename, content, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      function runPackageExport() {
+        const workbookModel = buildWorkbookModel();
+        if (workbookModel.errors.length) {
+          alert(
+            `Export blocked:\n\n${workbookModel.errors
+              .map((err) => `- ${err}`)
+              .join("\n")}`
+          );
+          return;
+        }
+        const filename = `XWHAT_Network_${new Date()
+          .toISOString()
+          .slice(0, 10)}.xwhat.xml`;
+        downloadTextFile(
+          filename,
+          buildNetworkPackageXml(workbookModel),
+          "application/xml;charset=utf-8"
+        );
+      }
+
+      function runLegacyWorkbookExport() {
+        const workbookModel = buildWorkbookModel();
+        if (workbookModel.errors.length) {
+          alert(
+            `Export blocked:\n\n${workbookModel.errors
+              .map((err) => `- ${err}`)
+              .join("\n")}`
+          );
+          return;
+        }
+
+        const nodes = workbookModel.workbookNodes;
+        const pipes = workbookModel.pipes;
+        const loops = workbookModel.loops;
+        const fd = workbookModel.fd,
+          fl = workbookModel.fl;
+        const N = nodes.length,
+          P = pipes.length,
+          L = loops.length;
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(
+          wb,
+          buildMemorySheet(nodes, pipes, loops, workbookModel.settings),
+          "Memory"
+        );
+        XLSX.utils.book_append_sheet(
+          wb,
+          buildMassBalanceSheet(fd),
+          "Mass_Balance"
+        );
+        XLSX.utils.book_append_sheet(
+          wb,
+          buildEnergyBalanceSheet(fl),
+          "Energy_Balance"
+        );
+        XLSX.utils.book_append_sheet(
+          wb,
+          buildInstructionsSheet(N, P, L),
+          "Instructions"
+        );
+
+        // Named Ranges
+        wb.Workbook = wb.Workbook || {};
+        wb.Workbook.Names = [
+          { Name: "num_segments", Ref: `Memory!$C$10` },
+          { Name: "num_nodes", Ref: `Memory!$C$12` },
+          { Name: "loops", Ref: `Memory!$C$14` },
+          { Name: "num_years", Ref: `Memory!$C$20` },
+          { Name: "increase_rate", Ref: `Memory!$C$18` },
+          { Name: "interest_rate", Ref: `Memory!$C$22` },
+          { Name: "k_1", Ref: `Memory!$C$26` },
+          { Name: "k_2", Ref: `Memory!$C$28` },
+          { Name: "nodes", Ref: `Memory!$B$50:$B$${49 + N}` },
+          { Name: "elevations", Ref: `Memory!$C$50:$C$${49 + N}` },
+          { Name: "demands", Ref: `Memory!$Y$50:$Y$${49 + N}` },
+          { Name: "discharges", Ref: `Memory!$AI$50:$AI$${49 + P}` },
+          { Name: "upstream_node", Ref: `Memory!$AF$50:$AF$${49 + P}` },
+          { Name: "downstream_node", Ref: `Memory!$AG$50:$AG$${49 + P}` },
+          { Name: "pipe_lengths", Ref: `Memory!$AJ$50:$AJ$${49 + P}` },
+          { Name: "choosen_diameters", Ref: `Memory!$AK$50:$AK$${49 + P}` },
+          {
+            Name: "F_d",
+            Ref: `Mass_Balance!$C$9:${XLSX.utils.encode_col(2 + P - 1)}$${
+              8 + N
+            }`,
+          },
+          {
+            Name: "F_a",
+            Ref: `Energy_Balance!$C$6:${XLSX.utils.encode_col(2 + P - 1)}$${
+              5 + L
+            }`,
+          },
+        ];
+
+        const filename = `XWHAT_Model_${new Date()
+          .toISOString()
+          .slice(0, 10)}.xlsx`;
+        XLSX.writeFile(wb, filename);
+      }
+
+      /* =========================================
+   CASE STUDIES PRESETS
+   ========================================= */
+      const caseStudies = {
+        caseB_wfp: {
+          label: "Case (b) | WFP/HSP | Porto 2006",
+          analysisMode: "wfp",
+          source: "Porto et al. (2006).",
+          description:
+            "Eight-node, two-loop network using Darcy-Weisbach. One fixed-head reservoir supplies 40 L/s. Solve for pipe discharges.",
+          notes: [
+            "Friction method: Darcy-Weisbach. Roughness ε = 0.0015 mm for all pipes. Kinematic viscosity ν = 1×10⁻⁶ m²/s.",
+            "Reservoir node 8 is fixed at hr = 28.7 m and supplies −40 L/s to the network.",
+            "Pump data: Kp = 3655.84, hours/day = 12, η = 0.85. Pump pipe: D = 200 mm, L = 500 m.",
+            "The same hydraulic geometry is used for both the WFP and DOM approaches.",
+          ],
+          solver: [
+            "Objective: feasibility only.",
+            "Changing cells: Memory!AI50:AI58.",
+            "Constraints: Memory!BE51:BE58 = 0 and Memory!BH51:BH52 = 0.",
+            "Method: GRG Nonlinear.",
+          ],
+          zoom: 0.9,
+          pan: { x: 50, y: 50 },
+          activeMode: "select",
+          settings: cloneSettings({
+            frictionMethod: "D-W",
+            kinematicViscosity: 1e-6,
+            pipeCatalog: DEFAULT_SETTINGS.pipeCatalog.map((pipe) => ({
+              ...pipe,
+              epsilon: 0.0015,
+            })),
+          }),
+          nodes: [
+            {
+              id: "1",
+              type: "junction",
+              x: 200,
+              y: 100,
+              elevation: 463.2,
+              demand: 0,
+            },
+            {
+              id: "2",
+              type: "junction",
+              x: 500,
+              y: 100,
+              elevation: 460.2,
+              demand: 10,
+            },
+            {
+              id: "3",
+              type: "junction",
+              x: 800,
+              y: 100,
+              elevation: 468.9,
+              demand: 8,
+            },
+            {
+              id: "6",
+              type: "junction",
+              x: 200,
+              y: 350,
+              elevation: 463.2,
+              demand: 5,
+            },
+            {
+              id: "5",
+              type: "junction",
+              x: 500,
+              y: 350,
+              elevation: 467.7,
+              demand: 10,
+            },
+            {
+              id: "4",
+              type: "junction",
+              x: 800,
+              y: 350,
+              elevation: 471.2,
+              demand: 5,
+            },
+            {
+              id: "7",
+              type: "junction",
+              x: 800,
+              y: 225,
+              elevation: 459.2,
+              demand: 2,
+            },
+            {
+              id: "8",
+              type: "tank",
+              x: 50,
+              y: 100,
+              elevation: 463.2,
+              hr: 28.7,
+              hb: 0,
+              demand: -40,
+              fixedHead: true,
+              pumpHours: 12,
+              pumpEfficiency: 0.85,
+              pumpKp: 3655.84,
+            },
+          ],
+          pipes: [
+            {
+              id: "P1",
+              from: "1",
+              to: "2",
+              length: 1850,
+              diameter: 150,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P2",
+              from: "2",
+              to: "3",
+              length: 790,
+              diameter: 125,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P3",
+              from: "7",
+              to: "3",
+              length: 700,
+              diameter: 100,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P4",
+              from: "4",
+              to: "7",
+              length: 600,
+              diameter: 100,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P5",
+              from: "5",
+              to: "4",
+              length: 980,
+              diameter: 100,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P6",
+              from: "2",
+              to: "5",
+              length: 850,
+              diameter: 100,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P7",
+              from: "6",
+              to: "5",
+              length: 650,
+              diameter: 200,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P8",
+              from: "1",
+              to: "6",
+              length: 850,
+              diameter: 200,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P9",
+              from: "8",
+              to: "1",
+              length: 520,
+              diameter: 250,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+          ],
+          loops: [
+            {
+              id: "L1",
+              pipeIds: ["P1", "P6", "P7", "P8"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L2",
+              pipeIds: ["P2", "P3", "P4", "P5", "P6"],
+              directions: [1, -1, -1, -1, -1],
+            },
+          ],
+        },
+        caseB_dom: {
+          label: "Case (b) | DOM | Porto 2006",
+          analysisMode: "dom",
+          source:
+            "Porto et al. (2006). Same geometry as the WFP case, configured for Design Optimization.",
+          description:
+            "Same Porto network as the WFP case, but the Solver minimizes total system cost by adjusting pipe flows and selected reservoir/tank design variables.",
+          notes: [
+            "Pump data: Kp = 3655.84, hours/day = 12, η = 0.85. Pump pipe: D = 200 mm, L = 500 m.",
+            "Review which reservoir and tank cells in the workbook are exposed as Solver decision variables before running.",
+            "Friction method: Darcy-Weisbach. Roughness ε = 0.0015 mm. Kinematic viscosity ν = 1×10⁻⁶ m²/s.",
+          ],
+          solver: [
+            "Objective: Memory!BT51 (Minimize).",
+            "Changing cells: Memory!AI50:AI58 plus the reservoir or tank design cells you audit in the workbook.",
+            "Constraints: Memory!BE51:BE58 = 0, Memory!BH51:BH52 = 0, and the workbook pressure bounds in column BK.",
+            "Method: GRG Nonlinear.",
+          ],
+          zoom: 0.9,
+          pan: { x: 50, y: 50 },
+          activeMode: "select",
+          settings: cloneSettings({
+            frictionMethod: "D-W",
+            kinematicViscosity: 1e-6,
+            pipeCatalog: DEFAULT_SETTINGS.pipeCatalog.map((pipe) => ({
+              ...pipe,
+              epsilon: 0.0015,
+            })),
+          }),
+          nodes: [
+            {
+              id: "1",
+              type: "junction",
+              x: 200,
+              y: 100,
+              elevation: 463.2,
+              demand: 0,
+            },
+            {
+              id: "2",
+              type: "junction",
+              x: 500,
+              y: 100,
+              elevation: 460.2,
+              demand: 10,
+            },
+            {
+              id: "3",
+              type: "junction",
+              x: 800,
+              y: 100,
+              elevation: 468.9,
+              demand: 8,
+            },
+            {
+              id: "6",
+              type: "junction",
+              x: 200,
+              y: 350,
+              elevation: 463.2,
+              demand: 5,
+            },
+            {
+              id: "5",
+              type: "junction",
+              x: 500,
+              y: 350,
+              elevation: 467.7,
+              demand: 10,
+            },
+            {
+              id: "4",
+              type: "junction",
+              x: 800,
+              y: 350,
+              elevation: 471.2,
+              demand: 5,
+            },
+            {
+              id: "7",
+              type: "junction",
+              x: 800,
+              y: 225,
+              elevation: 459.2,
+              demand: 2,
+            },
+            {
+              id: "8",
+              type: "tank",
+              x: 50,
+              y: 100,
+              elevation: 463.2,
+              hr: 28.7,
+              hb: 0,
+              demand: -40,
+              fixedHead: true,
+              pumpHours: 12,
+              pumpEfficiency: 0.85,
+              pumpKp: 3655.84,
+            },
+          ],
+          pipes: [
+            {
+              id: "P1",
+              from: "1",
+              to: "2",
+              length: 1850,
+              diameter: 150,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P2",
+              from: "2",
+              to: "3",
+              length: 790,
+              diameter: 125,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P3",
+              from: "7",
+              to: "3",
+              length: 700,
+              diameter: 100,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P4",
+              from: "4",
+              to: "7",
+              length: 600,
+              diameter: 100,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P5",
+              from: "5",
+              to: "4",
+              length: 980,
+              diameter: 100,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P6",
+              from: "2",
+              to: "5",
+              length: 850,
+              diameter: 100,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P7",
+              from: "6",
+              to: "5",
+              length: 650,
+              diameter: 200,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P8",
+              from: "1",
+              to: "6",
+              length: 850,
+              diameter: 200,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+            {
+              id: "P9",
+              from: "8",
+              to: "1",
+              length: 520,
+              diameter: 250,
+              frictionModel: "D-W",
+              roughness: 0.0015,
+            },
+          ],
+          loops: [
+            {
+              id: "L1",
+              pipeIds: ["P1", "P6", "P7", "P8"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L2",
+              pipeIds: ["P2", "P3", "P4", "P5", "P6"],
+              directions: [1, -1, -1, -1, -1],
+            },
+          ],
+        },
+        caseC_wfp: {
+          label: "Case (c) | WFP/HSP | Huddleston 2004",
+          analysisMode: "wfp",
+          source: "Huddleston et al. (2004).",
+          description:
+            "Fourteen-node, eight-loop network with 21 links. Two fixed-head reservoirs supply the system. Solve for all pipe discharges.",
+          notes: [
+            "Friction method: Darcy-Weisbach. Roughness ε = 0.26 mm for all pipes.",
+            "Reservoir 13 head is tied to reservoir 14 by +3.66 m. WFP heads: 13 = 13.99 m, 14 = 10.33 m.",
+            "Supply demands: node 13 = −103.7 L/s and node 14 = −35.1 L/s.",
+            "Pump data: node 13 Kp = 336.78 (D=300 mm), node 14 Kp = 5641.59 (D=175 mm). Both: hours/day = 12, η = 0.85.",
+          ],
+          solver: [
+            "Objective: feasibility only.",
+            "Changing cells: Memory!AI50:AI70.",
+            "Constraints: Memory!BE51:BE64 = 0 and Memory!BH51:BH58 = 0.",
+            "Method: GRG Nonlinear.",
+          ],
+          zoom: 0.8,
+          pan: { x: 50, y: 20 },
+          activeMode: "select",
+          settings: cloneSettings({
+            frictionMethod: "D-W",
+            kinematicViscosity: 1e-6,
+          }),
+          nodes: [
+            {
+              id: "1",
+              type: "junction",
+              x: 200,
+              y: 100,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "2",
+              type: "junction",
+              x: 400,
+              y: 100,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "3",
+              type: "junction",
+              x: 600,
+              y: 100,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "4",
+              type: "junction",
+              x: 800,
+              y: 100,
+              elevation: 100,
+              demand: 31.5,
+            },
+            {
+              id: "9",
+              type: "junction",
+              x: 200,
+              y: 260,
+              elevation: 100,
+              demand: 37.9,
+            },
+            {
+              id: "10",
+              type: "junction",
+              x: 400,
+              y: 260,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "11",
+              type: "junction",
+              x: 600,
+              y: 260,
+              elevation: 100,
+              demand: 44.2,
+            },
+            {
+              id: "12",
+              type: "junction",
+              x: 800,
+              y: 260,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "5",
+              type: "junction",
+              x: 1000,
+              y: 260,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "8",
+              type: "junction",
+              x: 200,
+              y: 400,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "7",
+              type: "junction",
+              x: 600,
+              y: 400,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "6",
+              type: "junction",
+              x: 800,
+              y: 400,
+              elevation: 100,
+              demand: 25.2,
+            },
+            {
+              id: "13",
+              type: "tank",
+              x: 50,
+              y: 100,
+              elevation: 100,
+              hr: 13.99,
+              hb: 0,
+              demand: -103.7,
+              fixedHead: true,
+              pressureLinkedToSourceId: "14",
+              pressureOffset: 3.66,
+              pumpHours: 12,
+              pumpEfficiency: 0.85,
+              pumpKp: 336.78,
+            },
+            {
+              id: "14",
+              type: "tank",
+              x: 1150,
+              y: 260,
+              elevation: 100,
+              hr: 10.33,
+              hb: 0,
+              demand: -35.1,
+              fixedHead: true,
+              pumpHours: 12,
+              pumpEfficiency: 0.85,
+              pumpKp: 5641.59,
+            },
+          ],
+          pipes: [
+            {
+              id: "P1",
+              from: "1",
+              to: "2",
+              length: 457.2,
+              diameter: 305,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P2",
+              from: "2",
+              to: "3",
+              length: 304.8,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P3",
+              from: "3",
+              to: "4",
+              length: 365.8,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P4",
+              from: "4",
+              to: "5",
+              length: 609.6,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P5",
+              from: "6",
+              to: "5",
+              length: 853.4,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P6",
+              from: "7",
+              to: "6",
+              length: 335.3,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P7",
+              from: "8",
+              to: "7",
+              length: 304.8,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P8",
+              from: "9",
+              to: "8",
+              length: 762,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P9",
+              from: "1",
+              to: "9",
+              length: 243.8,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P10",
+              from: "9",
+              to: "10",
+              length: 396.2,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P11",
+              from: "10",
+              to: "11",
+              length: 304.8,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P12",
+              from: "11",
+              to: "12",
+              length: 335.3,
+              diameter: 254,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P13",
+              from: "12",
+              to: "5",
+              length: 304.8,
+              diameter: 254,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P14",
+              from: "10",
+              to: "8",
+              length: 548.6,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P15",
+              from: "2",
+              to: "10",
+              length: 335.3,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P16",
+              from: "11",
+              to: "7",
+              length: 548.6,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P17",
+              from: "3",
+              to: "11",
+              length: 365.9,
+              diameter: 254,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P18",
+              from: "12",
+              to: "6",
+              length: 548.6,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P19",
+              from: "4",
+              to: "12",
+              length: 396.2,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P20",
+              from: "13",
+              to: "1",
+              length: 25,
+              diameter: 1000,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P21",
+              from: "14",
+              to: "5",
+              length: 25,
+              diameter: 1000,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+          ],
+          loops: [
+            {
+              id: "L1",
+              pipeIds: ["P1", "P15", "P10", "P9"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L2",
+              pipeIds: ["P2", "P17", "P11", "P15"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L3",
+              pipeIds: ["P3", "P19", "P12", "P17"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L4",
+              pipeIds: ["P4", "P13", "P19"],
+              directions: [1, -1, -1],
+            },
+            { id: "L5", pipeIds: ["P10", "P14", "P8"], directions: [1, 1, -1] },
+            {
+              id: "L6",
+              pipeIds: ["P11", "P16", "P7", "P14"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L7",
+              pipeIds: ["P12", "P18", "P6", "P16"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L8",
+              pipeIds: ["P13", "P5", "P18"],
+              directions: [1, -1, -1],
+            },
+          ],
+        },
+        caseC_dom: {
+          label: "Case (c) | DOM | Huddleston 2004",
+          analysisMode: "dom",
+          source:
+            "Huddleston (2004). Same configuration as WFP, but modelled using the DOM approach",
+          description:
+            "Huddleston DOM case: the Solver minimizes total capital cost (pipelines + pumping + tank material + foundation) by adjusting pipe flows, reservoir head, and tower heights.",
+          notes: [
+            "Reservoir 13 head is formula-linked to reservoir 14 by +3.66 m.",
+            "DOM starting values are pre-loaded. Please, set up the solver correctly.",
+            "Pump data: node 13 Kp = 336.78 (D=300 mm); node 14 Kp = 5641.59 (D=175 mm). Both: hours/day = 12, η = 0.85.",
+          ],
+          solver: [
+            "Objective: Memory!BT51 (Minimize).",
+            "Changing cells in the audited workbook example: Memory!AI50:AI70, Memory!AA63, Memory!T62:T63.",
+            "Keep Memory!AA62 formula-linked to Memory!AA63 + 3.66.",
+            "Audited constraints from the workbook: Memory!AA63 >= 5, Memory!AC62:AC63 <= 40, Memory!AI50:AI70 between -104 and 104, Memory!BE51:BE64 = 0, Memory!BH51:BH58 = 0, Memory!BK51:BK62 between 10 and 30, Memory!T62:T63 between 0 and 39.5.",
+            "Method: GRG Nonlinear.",
+          ],
+          zoom: 0.8,
+          pan: { x: 50, y: 20 },
+          activeMode: "select",
+          settings: cloneSettings({
+            frictionMethod: "D-W",
+            kinematicViscosity: 1e-6,
+          }),
+          nodes: [
+            {
+              id: "1",
+              type: "junction",
+              x: 200,
+              y: 100,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "2",
+              type: "junction",
+              x: 400,
+              y: 100,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "3",
+              type: "junction",
+              x: 600,
+              y: 100,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "4",
+              type: "junction",
+              x: 800,
+              y: 100,
+              elevation: 100,
+              demand: 31.5,
+            },
+            {
+              id: "9",
+              type: "junction",
+              x: 200,
+              y: 260,
+              elevation: 100,
+              demand: 37.9,
+            },
+            {
+              id: "10",
+              type: "junction",
+              x: 400,
+              y: 260,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "11",
+              type: "junction",
+              x: 600,
+              y: 260,
+              elevation: 100,
+              demand: 44.2,
+            },
+            {
+              id: "12",
+              type: "junction",
+              x: 800,
+              y: 260,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "5",
+              type: "junction",
+              x: 1000,
+              y: 260,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "8",
+              type: "junction",
+              x: 200,
+              y: 400,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "7",
+              type: "junction",
+              x: 600,
+              y: 400,
+              elevation: 100,
+              demand: 0,
+            },
+            {
+              id: "6",
+              type: "junction",
+              x: 800,
+              y: 400,
+              elevation: 100,
+              demand: 25.2,
+            },
+            {
+              id: "13",
+              type: "tank",
+              x: 50,
+              y: 100,
+              elevation: 100,
+              hr: 21.192925620874309,
+              hb: 0,
+              demand: -103.35739413874731,
+              fixedHead: true,
+              pressureLinkedToSourceId: "14",
+              pressureOffset: 3.66,
+              pumpHours: 12,
+              pumpEfficiency: 0.85,
+              pumpKp: 336.78,
+            },
+            {
+              id: "14",
+              type: "tank",
+              x: 1150,
+              y: 260,
+              elevation: 100,
+              hr: 17.532925620874309,
+              hb: 0,
+              demand: -35.442605861252716,
+              fixedHead: true,
+              pumpHours: 12,
+              pumpEfficiency: 0.85,
+              pumpKp: 5641.5853287558157,
+            },
+          ],
+          pipes: [
+            {
+              id: "P1",
+              from: "1",
+              to: "2",
+              length: 457.2,
+              diameter: 305,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P2",
+              from: "2",
+              to: "3",
+              length: 304.8,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P3",
+              from: "3",
+              to: "4",
+              length: 365.8,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P4",
+              from: "4",
+              to: "5",
+              length: 609.6,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P5",
+              from: "6",
+              to: "5",
+              length: 853.4,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P6",
+              from: "7",
+              to: "6",
+              length: 335.3,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P7",
+              from: "8",
+              to: "7",
+              length: 304.8,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P8",
+              from: "9",
+              to: "8",
+              length: 762,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P9",
+              from: "1",
+              to: "9",
+              length: 243.8,
+              diameter: 203,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P10",
+              from: "9",
+              to: "10",
+              length: 396.2,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P11",
+              from: "10",
+              to: "11",
+              length: 304.8,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P12",
+              from: "11",
+              to: "12",
+              length: 335.3,
+              diameter: 254,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P13",
+              from: "12",
+              to: "5",
+              length: 304.8,
+              diameter: 254,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P14",
+              from: "10",
+              to: "8",
+              length: 548.6,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P15",
+              from: "2",
+              to: "10",
+              length: 335.3,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P16",
+              from: "11",
+              to: "7",
+              length: 548.6,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P17",
+              from: "3",
+              to: "11",
+              length: 365.9,
+              diameter: 254,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P18",
+              from: "12",
+              to: "6",
+              length: 548.6,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P19",
+              from: "4",
+              to: "12",
+              length: 396.2,
+              diameter: 152,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P20",
+              from: "13",
+              to: "1",
+              length: 25,
+              diameter: 1000,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+            {
+              id: "P21",
+              from: "14",
+              to: "5",
+              length: 25,
+              diameter: 1000,
+              frictionModel: "D-W",
+              roughness: 0.26,
+            },
+          ],
+          loops: [
+            {
+              id: "L1",
+              pipeIds: ["P1", "P15", "P10", "P9"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L2",
+              pipeIds: ["P2", "P17", "P11", "P15"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L3",
+              pipeIds: ["P3", "P19", "P12", "P17"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L4",
+              pipeIds: ["P4", "P13", "P19"],
+              directions: [1, -1, -1],
+            },
+            { id: "L5", pipeIds: ["P10", "P14", "P8"], directions: [1, 1, -1] },
+            {
+              id: "L6",
+              pipeIds: ["P11", "P16", "P7", "P14"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L7",
+              pipeIds: ["P12", "P18", "P6", "P16"],
+              directions: [1, 1, -1, -1],
+            },
+            {
+              id: "L8",
+              pipeIds: ["P13", "P5", "P18"],
+              directions: [1, -1, -1],
+            },
+          ],
+        },
+      };
+
+      function applyScenarioMetadata(data, scenarioId) {
+        networkState.analysisMode = normalizeAnalysisMode(data.analysisMode);
+        networkState.activeScenarioId = scenarioId || "";
+        networkState.activeScenarioLabel = data.label || "Custom Network";
+        networkState.activeScenarioSource =
+          data.source ||
+          "Build a network from scratch or load an audited benchmark from the paper/workbook.";
+        networkState.activeScenarioDescription = data.description || "";
+        networkState.activeScenarioNotes = cloneDeep(data.notes || []);
+        networkState.activeScenarioSolver = cloneDeep(data.solver || []);
+      }
+
+      function resetScenarioMetadata() {
+        networkState.activeScenarioId = "";
+        networkState.activeScenarioLabel = "Custom Network";
+        networkState.activeScenarioSource =
+          "Build a network from scratch or load an audited benchmark from the paper/workbook.";
+        networkState.activeScenarioDescription = "";
+        networkState.activeScenarioNotes = [];
+        networkState.activeScenarioSolver = [];
+      }
+
+      function loadCaseStudyById(caseId) {
+        const data = caseStudies[caseId];
+        if (!data) return;
+
+        Object.assign(networkState, {
+          nodes: cloneDeep(data.nodes),
+          pipes: cloneDeep(data.pipes),
+          loops: cloneDeep(data.loops),
+          zoom: data.zoom,
+          pan: cloneDeep(data.pan),
+          activeMode: data.activeMode || "select",
+        });
+        networkState.settings = cloneDeep(data.settings || DEFAULT_SETTINGS);
+        applyScenarioMetadata(data, caseId);
+        selectedElement = null;
+        document.getElementById("btn-zoom-fit").click();
+        triggerDataUpdate();
+      }
+
+      document
+        .getElementById("select-case-study")
+        .addEventListener("change", (e) => {
+          const cid = e.target.value;
+          if (!cid) return;
+          if (
+            confirm(
+              `Load ${
+                e.target.options[e.target.selectedIndex].text
+              }? This will overwrite your current canvas.`
+            )
+          ) {
+            loadCaseStudyById(cid);
+          }
+          e.target.value = "";
+        });
+    </script>
+  </body>
+</html>

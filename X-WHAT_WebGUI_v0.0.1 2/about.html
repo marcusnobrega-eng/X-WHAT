@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>X-WHAT Model | About</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* SHARED DESIGN SYSTEM */
+      :root {
+        --navy: #1a3a5c;
+        --navy-dk: #0f2540;
+        --navy-lt: #2d5a8e;
+        --teal: #0d9488;
+        --teal-lt: #99f6e4;
+        --teal-bg: #f0fdfa;
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --ink: #1e293b;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --font-serif: "DM Serif Display", serif;
+        --font-sans: "DM Sans", sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        font-family: var(--font-sans);
+        background-color: var(--bg);
+        color: var(--ink);
+        line-height: 1.6;
+      }
+
+      /* Navigation */
+      #shared-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: var(--navy);
+        color: white;
+        padding: 1rem 2rem;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+      }
+      .nav-brand {
+        font-family: var(--font-serif);
+        font-size: 1.8rem;
+        text-decoration: none;
+        color: white;
+      }
+      .accent-dot {
+        color: var(--teal);
+      }
+      .nav-links {
+        list-style: none;
+        display: flex;
+        gap: 1.5rem;
+        margin: 0;
+        padding: 0;
+      }
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        transition: color 0.2s;
+        font-weight: 500;
+      }
+      .nav-links a:hover,
+      .nav-links a.active {
+        color: var(--teal-lt);
+        border-bottom: 2px solid var(--teal);
+      }
+
+      /* Layout & Typography */
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 4rem 2rem;
+      }
+      .section-title {
+        font-family: var(--font-serif);
+        font-size: 2rem;
+        color: var(--navy);
+        margin-bottom: 2rem;
+        border-bottom: 2px solid var(--teal);
+        padding-bottom: 0.5rem;
+      }
+
+      /* Abstract */
+      .abstract-block {
+        text-align: justify;
+        font-size: 1.1rem;
+        color: var(--ink);
+        background: var(--surface);
+        padding: 2rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        margin-bottom: 4rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      }
+
+      /* Contributions */
+      .contributions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 4rem;
+      }
+      .contrib-card {
+        background: var(--surface);
+        padding: 1.5rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        border-top: 4px solid var(--teal);
+      }
+      .contrib-card h4 {
+        margin: 0 0 0.5rem 0;
+        color: var(--navy);
+        font-size: 1.1rem;
+      }
+      .contrib-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      /* Authors */
+      .authors-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 4rem;
+      }
+      .author-card {
+        background: var(--surface);
+        padding: 1.5rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+      }
+      .author-card h3 {
+        margin: 0 0 0.25rem 0;
+        color: var(--navy);
+        font-size: 1.2rem;
+      }
+      .author-card .role {
+        color: var(--teal);
+        font-weight: 500;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+      }
+      .author-card .email-link {
+        color: var(--muted);
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+      .author-card .email-link:hover {
+        color: var(--navy);
+        text-decoration: underline;
+      }
+
+      /* Citation */
+      .citation-box {
+        background: var(--navy-dk);
+        color: var(--teal-lt);
+        padding: 1.5rem;
+        border-radius: 8px;
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        position: relative;
+        overflow-x: auto;
+        margin-bottom: 2rem;
+      }
+      .copy-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: var(--teal);
+        color: white;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: var(--font-sans);
+        font-size: 0.8rem;
+        font-weight: bold;
+      }
+      .copy-btn:hover {
+        background: #0b7a70;
+      }
+      .journal-info {
+        background: var(--teal-bg);
+        padding: 2rem;
+        border-radius: 8px;
+        text-align: center;
+        border: 1px dashed var(--teal);
+      }
+
+      /* Updated Shared Footer (Matched to Home) */
+      .shared-footer {
+        background-color: var(--navy-dk);
+        padding: 3rem 2rem;
+        border-top: 4px solid var(--teal);
+      }
+      .footer-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        text-align: left;
+      }
+      .footer-title {
+        font-family: var(--font-sans);
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: var(--border);
+        margin-bottom: 0.5rem;
+        line-height: 1.5;
+      }
+      .footer-authors {
+        color: var(--muted);
+        font-size: 0.95rem;
+        font-family: var(--font-sans);
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="shared-nav">
+      <a href="index.html" class="nav-brand"
+        >X-WHAT<span class="accent-dot">.</span></a
+      >
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html" class="active">About</a></li>
+        <li><a href="#">Theoretical Framework</a></li>
+        <li><a href="#">Manual</a></li>
+        <li><a href="canvas.html">Network Builder</a></li>
+        <li><a href="results.html">Results</a></li>
+      </ul>
+    </nav>
+
+    <main class="container">
+      <div class="contributions-grid">
+        <div class="contrib-card">
+          <h4>Open-Source Framework</h4>
+          <p>
+            An accessible model designed for both hydraulic simulation and
+            comprehensive design optimization.
+          </p>
+        </div>
+        <div class="contrib-card">
+          <h4>Novel Cost Function</h4>
+          <p>
+            Integrates pipeline costs, pump energy, tank construction material,
+            and foundation structural requirements.
+          </p>
+        </div>
+        <div class="contrib-card">
+          <h4>Structural Foundation Model</h4>
+          <p>
+            Incorporates lateral wind forces into the optimization of the
+            elevated water tank's foundation.
+          </p>
+        </div>
+        <div class="contrib-card">
+          <h4>Interdisciplinary Approach</h4>
+          <p>
+            Merges hydraulic network mechanics with structural design
+            constraints in a single environment.
+          </p>
+        </div>
+        <div class="contrib-card">
+          <h4>Interactive WebGUI</h4>
+          <p>
+            Features a Web-based Network Builder to visually design hydraulic
+            models and export data to run the Excel engine.
+          </p>
+        </div>
+        <div class="contrib-card">
+          <h4>UbD Teaching Framework</h4>
+          <p>
+            Includes a complete 'Understanding by Design' class organization
+            structure for engineering educators.
+          </p>
+        </div>
+      </div>
+
+      <h2 class="section-title">Abstract</h2>
+      <div class="abstract-block">
+        <p>
+          Cost-effective water distribution network design is crucial for the
+          management of drinking water in cities. This paper introduces an Excel
+          tool for designing cost-effective water distribution networks with
+          satisfactory pressure performance. Unlike traditional methods like
+          Hardy-Cross, this tool utilizes Excel’s built-in solver without
+          needing conservative initial estimates or iterative corrections. We
+          provide an open-source solution for simulating hydraulic networks,
+          suitable for educational purposes as well. The paper outlines the
+          mathematical framework considering network topology, mass and energy
+          conservation, and costs associated with tank materials and pumping
+          energy. It emphasizes its suitability for teaching complex concepts
+          without requiring coding expertise. The tool allows a rapid
+          sensitivity analysis, enabling users to assess the effects of varying
+          demands or configurations on both cost and network performance. Three
+          practical examples, including a comparison with EPANET and literature
+          results, demonstrate its effectiveness. Additionally, we propose a
+          tentative class organization and a unit design, following the
+          Understanding by Design (UbD) approach, to facilitate the tool’s
+          application in engineering education. Through optimization, the tool
+          achieved a substantial cost reduction of 151,790 USD (9.8% of total
+          cost) compared to standard design in a network serving 44,416 people.
+          Supplementary material offers a detailed guide on utilizing the tool
+          effectively.
+        </p>
+      </div>
+
+      <h2 class="section-title">Authors & Contributions</h2>
+      <div class="authors-grid">
+        <div class="author-card">
+          <h3>Marcus N. Gomes Jr.</h3>
+          <span class="role">Lead Developer / Author</span>
+          <a href="mailto:mngomes@stanford.edu" class="email-link"
+            >mngomes@stanford.edu</a
+          >
+          <a
+            href="mailto:marcusnobrega.engcivil@gmail.com"
+            class="email-link"
+            style="margin-top: 0.25rem"
+            >marcusnobrega.engcivil@gmail.com</a
+          >
+        </div>
+        <div class="author-card">
+          <h3>Salma M. Elsherif</h3>
+          <span class="role">UbD class framework design / Author</span>
+          <a href="mailto:salma.m.elsherif@vanderbilt.edu" class="email-link"
+            >salma.m.elsherif@vanderbilt.edu</a
+          >
+        </div>
+        <div class="author-card">
+          <h3>Igor M. Benites</h3>
+          <span class="role">WebGUI Developer / Author</span>
+          <a href="mailto:imbenites@usp.br" class="email-link"
+            >imbenites@usp.br</a
+          >
+          <a
+            href="mailto:igormbenites@gmail.com"
+            class="email-link"
+            style="margin-top: 0.25rem"
+            >igormbenites@gmail.com</a
+          >
+        </div>
+        <div class="author-card">
+          <h3>Ahmad F. Taha</h3>
+          <span class="role">Author</span>
+          <a href="mailto:ahmad.taha@vanderbilt.edu" class="email-link"
+            >ahmad.taha@vanderbilt.edu</a
+          >
+        </div>
+        <div class="author-card">
+          <h3>Marcio H. Giacomoni</h3>
+          <span class="role">Author</span>
+          <a href="mailto:Marcio.Giacomoni@utsa.edu" class="email-link"
+            >Marcio.Giacomoni@utsa.edu</a
+          >
+        </div>
+      </div>
+
+      <h2 class="section-title">How to Cite</h2>
+      <div class="citation-box">
+        <button
+          class="copy-btn"
+          onclick="navigator.clipboard.writeText(document.getElementById('bibtex').innerText); this.innerText='Copied!'; setTimeout(()=>this.innerText='Copy BibTeX', 2000);"
+        >
+          Copy BibTeX
+        </button>
+        <pre id="bibtex" style="margin: 0">
+@misc{gomes2024modelingdesignoptimizationlooped,
+      title={Modeling and Design Optimization of Looped Water Distribution Networks using MS Excel: Developing the Open-Source X-WHAT Model}, 
+      author={Marcus Nóbrega Gomes Jr. and Igor Matheus Benites and Salma M. Elsherif and Ahmad F. Taha and Marcio H. Giacomoni},
+      year={2024},
+      eprint={2405.09044},
+      archivePrefix={arXiv},
+      primaryClass={eess.SY},
+      url={https://arxiv.org/abs/2405.09044}, 
+}</pre
+        >
+      </div>
+
+      <div class="journal-info">
+        <h3
+          style="
+            color: var(--navy);
+            margin-top: 0;
+            font-family: var(--font-serif);
+          "
+        >
+          Preprint Version
+        </h3>
+        <p style="margin-bottom: 0">
+          Status: Submitted. The DOI link will be updated upon final
+          publication.
+        </p>
+      </div>
+    </main>
+
+    <footer class="shared-footer">
+      <div class="footer-content">
+        <div class="footer-title">
+          Modeling and Design Optimization of Looped Water Distribution Networks
+          using MS Excel: Developing the Open-Source X-WHAT Model
+        </div>
+        <div class="footer-authors">
+          Gomes Jr., M. N., Benites, I. M., Elsherif, S. M., Taha, A. F., &
+          Giacomoni, M. H.
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
